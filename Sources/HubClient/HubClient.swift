@@ -21,10 +21,12 @@ public class HubClient {
   }
   public let channel: Channel<Void>
   public let service: HubService
+  public var profile: Profile
   private var sender: ClientSender<Void>!
   public init(_ url: URL = HubClient.local, keyChain: KeyChain? = nil) {
     channel = Channel()
     service = HubService(channel: channel)
+    profile = Profile(name: .device, icon: .device)
     if let keyChain {
       sender = channel.connect(url, options: ClientOptions(headers: {
         let key = keyChain.publicKey()
@@ -33,6 +35,7 @@ public class HubClient {
         return ["auth": "key.\(key).\(sign).\(time)"]
       }, onConnect: { [weak self] sender in
         guard let self else { return }
+        try? await sender.send("hub/profile/update", profile)
         try await service.sendServiceUpdates()
       }))
     } else {
@@ -66,6 +69,10 @@ public class HubClient {
   }
   public func stop() {
     sender.stop()
+  }
+  public struct Profile: Codable, Sendable, Hashable {
+    public var name: String
+    public var icon: Icon
   }
 }
 
