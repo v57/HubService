@@ -36,8 +36,8 @@ public struct AppInterface: Codable, Sendable {
   
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
-    header = try? container.decodeIfPresent(.header)
-    body = try? container.decodeLossy(.body)
+    header = container.decodeIfPresent(.header)
+    body = container.decodeLossy(.body)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)

@@ -166,14 +166,14 @@ extension KeyedDecodingContainer {
     try decode(T.self, forKey: key)
   }
   @inlinable
-  func decodeIfPresent<T: Decodable>(_ key: K) throws -> T? {
-    try decodeIfPresent(T.self, forKey: key)
+  func decodeIfPresent<T: Decodable>(_ key: K) -> T? {
+    try? decodeIfPresent(T.self, forKey: key)
   }
   @inlinable
   func decodeIfPresent<T: Decodable>(_ key: K, _ defalutValue: @autoclosure () -> (T)) -> T {
     (try? decodeIfPresent(T.self, forKey: key)) ?? defalutValue()
   }
-  func decodeLossy<Element: Decodable>(_ key: K) throws -> [Element] {
-    try decode([Lossy<Element>].self, forKey: key).compactMap { $0.value }
+  func decodeLossy<Element: Decodable>(_ key: K) -> [Element] {
+    (try? decode([Lossy<Element>].self, forKey: key).compactMap { $0.value }) ?? []
   }
 }
