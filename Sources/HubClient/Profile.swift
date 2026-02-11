@@ -6,6 +6,9 @@
 //
 
 import Foundation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 public struct Icon: Codable, Hashable, Sendable {
   public static func plain(text: String? = nil, symbol: String? = nil) -> Icon {
@@ -94,6 +97,7 @@ public struct Icon: Codable, Hashable, Sendable {
 }
 
 extension String {
+  @MainActor
   static var device: String {
     #if canImport(UIKit)
     UIDevice.current.localizedModel
@@ -105,6 +109,7 @@ extension String {
   }
 }
 extension Icon {
+  @MainActor
   static var device: Icon {
     #if os(iOS)
     if UIDevice.current.userInterfaceIdiom == .pad {
