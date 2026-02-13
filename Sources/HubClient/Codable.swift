@@ -152,7 +152,7 @@ struct LossyArray<Element: Decodable>: Decodable {
   }
 }
 
-extension Decoder {
+public extension Decoder {
   @inlinable
   func decode<T: Decodable>() throws -> T {
     try singleValueContainer().decode(T.self)
@@ -162,7 +162,7 @@ extension Decoder {
   }
 }
 
-extension KeyedDecodingContainer {
+public extension KeyedDecodingContainer {
   @inlinable
   func decode<T: Decodable>(_ key: K) throws -> T {
     try decode(T.self, forKey: key)
