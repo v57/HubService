@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum AnyCodable: Codable, Hashable {
+public enum AnyCodable: Codable, Hashable {
   case dictionary([String: AnyCodable])
   case array([AnyCodable])
   case string(String)
@@ -15,7 +15,7 @@ enum AnyCodable: Codable, Hashable {
   case double(Double)
   case date(Date)
   case void
-  init(from decoder: any Decoder) throws {
+  public init(from decoder: any Decoder) throws {
     let container = try decoder.singleValueContainer()
     if let value = try? container.decode([String: AnyCodable].self) {
       self = .dictionary(value)
@@ -34,7 +34,7 @@ enum AnyCodable: Codable, Hashable {
     }
   }
   
-  func encode(to encoder: any Encoder) throws {
+  public func encode(to encoder: any Encoder) throws {
     var container = encoder.singleValueContainer()
     switch self {
     case .dictionary(let value):
@@ -52,6 +52,8 @@ enum AnyCodable: Codable, Hashable {
     case .void: break
     }
   }
+}
+public extension AnyCodable {
   var dictionary: [String: AnyCodable]? {
     get {
       switch self {
