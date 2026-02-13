@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum AnyCodable: Codable, Hashable {
+public enum AnyCodable: Codable, Hashable, Sendable {
   case dictionary([String: AnyCodable])
   case array([AnyCodable])
   case string(String)
