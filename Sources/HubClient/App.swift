@@ -30,19 +30,22 @@ public extension HubService {
 public struct AppInterface: Codable, Sendable {
   public var header: AppHeader?
   public var body: [Element]?
+  public var data: [String: AnyCodable]?
   enum CodingKeys: CodingKey {
-    case header, body
+    case header, body, data
   }
   
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     header = container.decodeIfPresent(.header)
     body = container.decodeLossy(.body)
+    data = container.decodeIfPresent(.data)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encodeIfPresent(header, forKey: .header)
     try container.encodeIfPresent(body, forKey: .body)
+    try container.encodeIfPresent(data, forKey: .body)
   }
   public init(header: AppHeader, body: [Element]) {
     self.header = header
