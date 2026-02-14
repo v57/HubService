@@ -38,14 +38,14 @@ public struct AppInterface: Codable, Sendable {
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     header = container.decodeIfPresent(.header)
-    body = container.decodeLossy(.body)
+    body = container.decodeLossyIfPresent(.body)
     data = container.decodeIfPresent(.data)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encodeIfPresent(header, forKey: .header)
     try container.encodeIfPresent(body, forKey: .body)
-    try container.encodeIfPresent(data, forKey: .body)
+    try container.encodeIfPresent(data, forKey: .data)
   }
   public init(header: AppHeader, body: [Element]) {
     self.header = header

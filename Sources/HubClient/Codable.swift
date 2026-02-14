@@ -178,4 +178,8 @@ public extension KeyedDecodingContainer {
   func decodeLossy<Element: Decodable>(_ key: K) -> [Element] {
     (try? decode([Lossy<Element>].self, forKey: key).compactMap { $0.value }) ?? []
   }
+  func decodeLossyIfPresent<Element: Decodable>(_ key: K) -> [Element]? {
+    (try? decodeIfPresent([Lossy<Element>].self, forKey: key)?
+      .compactMap { $0.value })
+  }
 }
