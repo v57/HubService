@@ -128,6 +128,7 @@ public class HubService {
     }
     public func app(_ app: App) -> Self {
       _ = service?.app(app)
+      apis.insert(app.header.path)
       apps.insert(app.header.path)
       return self
     }
