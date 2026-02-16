@@ -36,7 +36,7 @@ public class HubClient {
       }, onConnect: { [weak self] sender in
         guard let self else { return }
         try? await sender.send("hub/profile/update", profile)
-        try await service.sendServiceUpdates()
+        try await service.sendServiceUpdates(first: true)
       }))
     } else {
       sender = channel.connect(url)

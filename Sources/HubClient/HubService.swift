@@ -52,10 +52,10 @@ public class HubService {
     guard sender?.ws.isConnected == true else { return }
     serviceUpdatesTask = Task {
       try await Task.sleep(nanoseconds: 100_000_000)
-      try await sendServiceUpdates()
+      try await sendServiceUpdates(first: false)
     }
   }
-  func sendServiceUpdates() async throws {
+  func sendServiceUpdates(first: Bool) async throws {
     guard let sender else { return }
     var api = Set(channel.postApi.keys).union(channel.streamApi.keys)
     var disabledApps = Set<String>()
@@ -67,7 +67,7 @@ public class HubService {
     }
     let apps = apps.filter { !disabledApps.contains($0.path) }
     let update = HubService.Update(services: api.map { ServiceHeader(path: $0) }, apps: apps)
-    if !update.isEmpty {
+    if !first || !update.isEmpty {
       try await sender.send("hub/service/update", update)
     }
   }
