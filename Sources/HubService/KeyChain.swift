@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  HubClient
+//  HubService
 //
 //  Created by Dmitry Kozlov on 30/4/25.
 //

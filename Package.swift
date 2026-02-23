@@ -2,11 +2,11 @@
 import PackageDescription
 
 let package = Package(
-  name: "HubClient",
+  name: "HubService",
   platforms: [.iOS(.v15), .macCatalyst(.v15), .tvOS(.v15), .macOS(.v12), .watchOS(.v8), .visionOS(.v1)],
-  products: [.library(name: "HubClient", targets: ["HubClient"])],
+  products: [.library(name: "HubService", targets: ["HubService"])],
   dependencies: [.package(url: "https://github.com/v57/ChannelSwift.git", branch: "main")],
   targets: [
-    .target(name: "HubClient", dependencies: [.product(name: "Channel", package: "ChannelSwift")]),
+    .target(name: "HubService", dependencies: [.product(name: "Channel", package: "ChannelSwift")]),
   ]
 )

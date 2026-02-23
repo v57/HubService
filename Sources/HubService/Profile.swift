@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  HubClient
+//  HubService
 //
 //  Created by Linux on 11.02.26.
 //

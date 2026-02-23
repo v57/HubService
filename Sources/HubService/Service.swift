@@ -1,6 +1,6 @@
 //
 //  File.swift
-//  HubClient
+//  HubService
 //
 //  Created by Linux on 19.07.25.
 //
@@ -21,7 +21,7 @@ public class HubService {
   private var serviceUpdatesTask: Task<Void, Error>? {
     didSet { oldValue?.cancel() }
   }
-  init(channel: Channel<Void>) {
+  public init(channel: Channel<Void>) {
     self.channel = channel
   }
   public func post<Input: Decodable & Sendable, Output: Encodable & Sendable>(_ path: String, request: @escaping (@Sendable (Input) async throws -> Output)) -> Self {
