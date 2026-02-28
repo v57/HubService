@@ -59,7 +59,7 @@ public struct AppInterface: Codable, Sendable {
 public enum ElementType: String, Codable {
   case text, progress // readonly
   case textField, button, slider, picker, files, fileOperation // actions
-  case list, cell, top, bottom, hstack, vstack // containers
+  case list, cell, top, bottom, hstack, vstack, zstack // containers
   case spacer // layout
 }
 
@@ -87,6 +87,7 @@ public enum Element: Identifiable, Codable, Sendable {
     case .bottom(let value): return value
     case .hstack(let value): return value
     case .vstack(let value): return value
+    case .zstack(let value): return value
     case .spacer(let value): return value
     case .progress(let value): return value
     }
@@ -104,6 +105,7 @@ public enum Element: Identifiable, Codable, Sendable {
   case bottom(Bottom)
   case hstack(HStack)
   case vstack(VStack)
+  case zstack(ZStack)
   case spacer(Spacer)
   case progress(Progress)
   enum CodingKeys: CodingKey {
@@ -144,6 +146,8 @@ public enum Element: Identifiable, Codable, Sendable {
         self = try .hstack(HStack(from: decoder))
       case .vstack:
         self = try .vstack(VStack(from: decoder))
+      case .zstack:
+        self = try .zstack(ZStack(from: decoder))
       case .spacer:
         self = try .spacer(Spacer(from: decoder))
       case .progress:
@@ -338,6 +342,17 @@ public enum Element: Identifiable, Codable, Sendable {
       self.content = content
     }
   }
+  public final class ZStack: ElementProtocol, Identifiable, Codable, Sendable {
+    public var type: ElementType { .zstack }
+    public let id = UUID().uuidString
+    public let content: Element
+    enum CodingKeys: CodingKey {
+      case content
+    }
+    public init(content: Element) {
+      self.content = content
+    }
+  }
   public final class Spacer: ElementProtocol, Identifiable, Codable, Sendable {
     public var type: ElementType { .spacer }
     public let id = UUID().uuidString
@@ -346,7 +361,7 @@ public enum Element: Identifiable, Codable, Sendable {
     public func encode(to encoder: any Encoder) throws { }
   }
   public struct Picker: ElementProtocol, Identifiable, Codable, Sendable {
-    public var type: ElementType { .list }
+    public var type: ElementType { .picker }
     public let id = UUID().uuidString
     public let options: [String]
     public let selected: String
