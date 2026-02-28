@@ -10,10 +10,14 @@ import Foundation
 public struct App: Sendable {
   public var header: AppHeader
   public var body: [Element]
+  public var top: Element?
+  public var bottom: Element?
   public var data: [String: String]
-  public init(header: AppHeader, body: [Element], data: [String: String]) {
+  public init(header: AppHeader, body: [Element], top: Element? = nil, bottom: Element? = nil, data: [String: String]) {
     self.header = header
     self.body = body
+    self.top = top
+    self.bottom = bottom
     self.data = data
   }
 }
@@ -22,7 +26,7 @@ public extension HubService {
   func app(_ app: App) -> Self {
     apps.append(app.header)
     return stream(app.header.path) { continuation in
-      continuation.yield(AppInterface(header: app.header, body: app.body))
+      continuation.yield(AppInterface(header: app.header, body: app.body, top: app.top, bottom: app.bottom))
     }
   }
 }
@@ -30,36 +34,44 @@ public extension HubService {
 public struct AppInterface: Codable, Sendable {
   public var header: AppHeader?
   public var body: [Element]?
+  public var top: Element?
+  public var bottom: Element?
   public var data: [String: AnyCodable]?
   enum CodingKeys: CodingKey {
-    case header, body, data
+    case header, body, top, bottom, data
   }
   
+  public init(header: AppHeader, body: [Element], top: Element?, bottom: Element?) {
+    self.header = header
+    self.top = top
+    self.bottom = bottom
+    self.body = body
+  }
+  public init() {
+    
+  }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
     header = container.decodeIfPresent(.header)
     body = container.decodeLossyIfPresent(.body)
+    top = container.decodeIfPresent(.top)
+    bottom = container.decodeIfPresent(.bottom)
     data = container.decodeIfPresent(.data)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     try container.encodeIfPresent(header, forKey: .header)
     try container.encodeIfPresent(body, forKey: .body)
+    try container.encodeIfPresent(top, forKey: .top)
+    try container.encodeIfPresent(bottom, forKey: .bottom)
     try container.encodeIfPresent(data, forKey: .data)
-  }
-  public init(header: AppHeader, body: [Element]) {
-    self.header = header
-    self.body = body
-  }
-  public init() {
-    
   }
 }
 
 public enum ElementType: String, Codable {
   case text, progress // readonly
   case textField, button, slider, picker, files, fileOperation // actions
-  case list, cell, top, bottom, hstack, vstack, zstack // containers
+  case list, cell, hstack, vstack, zstack // containers
   case spacer // layout
 }
 
@@ -83,8 +95,6 @@ public enum Element: Identifiable, Codable, Sendable {
     case .cell(let value): return value
     case .files(let value): return value
     case .fileOperation(let value): return value
-    case .top(let value): return value
-    case .bottom(let value): return value
     case .hstack(let value): return value
     case .vstack(let value): return value
     case .zstack(let value): return value
@@ -101,8 +111,6 @@ public enum Element: Identifiable, Codable, Sendable {
   case cell(Cell)
   case files(Files)
   case fileOperation(FileOperation)
-  case top(Top)
-  case bottom(Bottom)
   case hstack(HStack)
   case vstack(VStack)
   case zstack(ZStack)
@@ -138,10 +146,6 @@ public enum Element: Identifiable, Codable, Sendable {
         self = try .files(Files(from: decoder))
       case .fileOperation:
         self = try .fileOperation(FileOperation(from: decoder))
-      case .top:
-        self = try .top(Top(from: decoder))
-      case .bottom:
-        self = try .bottom(Bottom(from: decoder))
       case .hstack:
         self = try .hstack(HStack(from: decoder))
       case .vstack:
@@ -291,28 +295,6 @@ public enum Element: Identifiable, Codable, Sendable {
     }
     public init(data: String, content: Element) {
       self.data = data
-      self.content = content
-    }
-  }
-  public final class Top: ElementProtocol, Identifiable, Codable, Sendable {
-    public var type: ElementType { .top }
-    public let id = UUID().uuidString
-    public let content: Element
-    enum CodingKeys: CodingKey {
-      case content
-    }
-    public init(content: Element) {
-      self.content = content
-    }
-  }
-  public final class Bottom: ElementProtocol, Identifiable, Codable, Sendable {
-    public var type: ElementType { .bottom }
-    public let id = UUID().uuidString
-    public let content: Element
-    enum CodingKeys: CodingKey {
-      case content
-    }
-    public init(content: Element) {
       self.content = content
     }
   }
