@@ -180,8 +180,8 @@ public enum Element: Identifiable, Codable, Sendable {
     public var type: ElementType { .text }
     public let id = UUID().uuidString
     public let value: String
-    public let min: Double?
-    public let max: Double?
+    public let min: Double
+    public let max: Double
     enum CodingKeys: CodingKey {
       case value, min, max
     }
