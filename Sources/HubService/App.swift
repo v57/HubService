@@ -303,37 +303,51 @@ public enum Element: Identifiable, Codable, Sendable {
     public var type: ElementType { .hstack }
     public let id = UUID().uuidString
     public let spacing: Double?
-    public let content: Element
+    public let content: [Element]
     enum CodingKeys: CodingKey {
       case spacing, content
     }
-    public init(spacing: Double?, content: Element) {
+    public init(spacing: Double? = nil, content: [Element]) {
       self.spacing = spacing
       self.content = content
+    }
+    public init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      self.spacing = container.decodeIfPresent(.spacing)
+      self.content = container.decodeLossy(.content)
     }
   }
   public final class VStack: ElementProtocol, Identifiable, Codable, Sendable {
     public var type: ElementType { .vstack }
     public let id = UUID().uuidString
     public let spacing: Double?
-    public let content: Element
+    public let content: [Element]
     enum CodingKeys: CodingKey {
       case spacing, content
     }
-    public init(spacing: Double?, content: Element) {
+    public init(spacing: Double? = nil, content: [Element]) {
       self.spacing = spacing
       self.content = content
+    }
+    public init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      self.spacing = container.decodeIfPresent(.spacing)
+      self.content = container.decodeLossy(.content)
     }
   }
   public final class ZStack: ElementProtocol, Identifiable, Codable, Sendable {
     public var type: ElementType { .zstack }
     public let id = UUID().uuidString
-    public let content: Element
+    public let content: [Element]
     enum CodingKeys: CodingKey {
       case content
     }
-    public init(content: Element) {
+    public init(content: [Element]) {
       self.content = content
+    }
+    public init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      self.content = container.decodeLossy(.content)
     }
   }
   public final class Spacer: ElementProtocol, Identifiable, Codable, Sendable {
