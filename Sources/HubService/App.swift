@@ -12,8 +12,8 @@ public struct App: Sendable {
   public var body: [Element]
   public var top: Element?
   public var bottom: Element?
-  public var data: [String: String]
-  public init(header: AppHeader, body: [Element], top: Element? = nil, bottom: Element? = nil, data: [String: String]) {
+  public var data: [String: AnyCodable]
+  public init(header: AppHeader, body: [Element], top: Element? = nil, bottom: Element? = nil, data: [String: AnyCodable] = [:]) {
     self.header = header
     self.body = body
     self.top = top
@@ -26,7 +26,7 @@ public extension HubService {
   func app(_ app: App) -> Self {
     apps.append(app.header)
     return stream(app.header.path) { continuation in
-      continuation.yield(AppInterface(header: app.header, body: app.body, top: app.top, bottom: app.bottom))
+      continuation.yield(AppInterface(header: app.header, body: app.body, top: app.top, bottom: app.bottom, data: app.data))
     }
   }
 }
@@ -41,11 +41,12 @@ public struct AppInterface: Codable, Sendable {
     case header, body, top, bottom, data
   }
   
-  public init(header: AppHeader, body: [Element], top: Element?, bottom: Element?) {
+  public init(header: AppHeader, body: [Element], top: Element?, bottom: Element?, data: [String: AnyCodable]?) {
     self.header = header
     self.top = top
     self.bottom = bottom
     self.body = body
+    self.data = data
   }
   public init() {
     
