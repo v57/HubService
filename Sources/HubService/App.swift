@@ -57,7 +57,10 @@ public struct AppInterface: Codable, Sendable {
 }
 
 public enum ElementType: String, Codable {
-  case text, textField, button, slider, list, picker, cell, files, fileOperation
+  case text // readonly
+  case textField, button, slider, picker, files, fileOperation // actions
+  case list, cell, top, bottom, hstack, vstack // containers
+  case spacer // layout
 }
 
 public protocol ElementProtocol: Codable {
@@ -80,6 +83,11 @@ public enum Element: Identifiable, Codable, Sendable {
     case .cell(let value): return value
     case .files(let value): return value
     case .fileOperation(let value): return value
+    case .top(let value): return value
+    case .bottom(let value): return value
+    case .hstack(let value): return value
+    case .vstack(let value): return value
+    case .spacer(let value): return value
     }
   }
   case text(Text)
@@ -91,6 +99,11 @@ public enum Element: Identifiable, Codable, Sendable {
   case cell(Cell)
   case files(Files)
   case fileOperation(FileOperation)
+  case top(Top)
+  case bottom(Bottom)
+  case hstack(HStack)
+  case vstack(VStack)
+  case spacer(Spacer)
   enum CodingKeys: CodingKey {
     case type
   }
@@ -121,6 +134,16 @@ public enum Element: Identifiable, Codable, Sendable {
         self = try .files(Files(from: decoder))
       case .fileOperation:
         self = try .fileOperation(FileOperation(from: decoder))
+      case .top:
+        self = try .top(Top(from: decoder))
+      case .bottom:
+        self = try .bottom(Bottom(from: decoder))
+      case .hstack:
+        self = try .hstack(HStack(from: decoder))
+      case .vstack:
+        self = try .vstack(VStack(from: decoder))
+      case .spacer:
+        self = try .spacer(Spacer(from: decoder))
       }
     }
   }
@@ -227,14 +250,69 @@ public enum Element: Identifiable, Codable, Sendable {
     public var type: ElementType { .list }
     public let id = UUID().uuidString
     public let data: String
-    public let elements: Element
+    public let content: Element
     enum CodingKeys: CodingKey {
-      case data, elements
+      case data, content
     }
-    public init(data: String, elements: Element) {
+    public init(data: String, content: Element) {
       self.data = data
-      self.elements = elements
+      self.content = content
     }
+  }
+  public final class Top: ElementProtocol, Identifiable, Codable, Sendable {
+    public var type: ElementType { .top }
+    public let id = UUID().uuidString
+    public let content: Element
+    enum CodingKeys: CodingKey {
+      case content
+    }
+    public init(content: Element) {
+      self.content = content
+    }
+  }
+  public final class Bottom: ElementProtocol, Identifiable, Codable, Sendable {
+    public var type: ElementType { .bottom }
+    public let id = UUID().uuidString
+    public let content: Element
+    enum CodingKeys: CodingKey {
+      case content
+    }
+    public init(content: Element) {
+      self.content = content
+    }
+  }
+  public final class HStack: ElementProtocol, Identifiable, Codable, Sendable {
+    public var type: ElementType { .hstack }
+    public let id = UUID().uuidString
+    public let spacing: Double?
+    public let content: Element
+    enum CodingKeys: CodingKey {
+      case spacing, content
+    }
+    public init(spacing: Double?, content: Element) {
+      self.spacing = spacing
+      self.content = content
+    }
+  }
+  public final class VStack: ElementProtocol, Identifiable, Codable, Sendable {
+    public var type: ElementType { .vstack }
+    public let id = UUID().uuidString
+    public let spacing: Double?
+    public let content: Element
+    enum CodingKeys: CodingKey {
+      case spacing, content
+    }
+    public init(spacing: Double?, content: Element) {
+      self.spacing = spacing
+      self.content = content
+    }
+  }
+  public final class Spacer: ElementProtocol, Identifiable, Codable, Sendable {
+    public var type: ElementType { .spacer }
+    public let id = UUID().uuidString
+    public init() {}
+    public init(from decoder: any Decoder) throws { }
+    public func encode(to encoder: any Encoder) throws { }
   }
   public struct Picker: ElementProtocol, Identifiable, Codable, Sendable {
     public var type: ElementType { .list }
