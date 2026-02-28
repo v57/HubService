@@ -57,7 +57,7 @@ public struct AppInterface: Codable, Sendable {
 }
 
 public enum ElementType: String, Codable {
-  case text // readonly
+  case text, progress // readonly
   case textField, button, slider, picker, files, fileOperation // actions
   case list, cell, top, bottom, hstack, vstack // containers
   case spacer // layout
@@ -88,6 +88,7 @@ public enum Element: Identifiable, Codable, Sendable {
     case .hstack(let value): return value
     case .vstack(let value): return value
     case .spacer(let value): return value
+    case .progress(let value): return value
     }
   }
   case text(Text)
@@ -104,6 +105,7 @@ public enum Element: Identifiable, Codable, Sendable {
   case hstack(HStack)
   case vstack(VStack)
   case spacer(Spacer)
+  case progress(Progress)
   enum CodingKeys: CodingKey {
     case type
   }
@@ -144,6 +146,8 @@ public enum Element: Identifiable, Codable, Sendable {
         self = try .vstack(VStack(from: decoder))
       case .spacer:
         self = try .spacer(Spacer(from: decoder))
+      case .progress:
+        self = try .progress(Progress(from: decoder))
       }
     }
   }
@@ -170,6 +174,33 @@ public enum Element: Identifiable, Codable, Sendable {
       let container = try decoder.container(keyedBy: CodingKeys.self)
       self.value = try container.decode(.value)
       self.secondary = container.decodeIfPresent(.secondary, false)
+    }
+  }
+  public struct Progress: ElementProtocol, Identifiable, Codable, Sendable {
+    public var type: ElementType { .text }
+    public let id = UUID().uuidString
+    public let value: String
+    public let min: Double?
+    public let max: Double?
+    enum CodingKeys: CodingKey {
+      case value, min, max
+    }
+    public init(value: String, min: Double = 0, max: Double = 1) {
+      self.value = value
+      self.min = min
+      self.max = max
+    }
+    public init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      self.value = try container.decode(.value)
+      self.min = container.decodeIfPresent(.min, 0)
+      self.max = container.decodeIfPresent(.max, 1)
+    }
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: Element.Progress.CodingKeys.self)
+      try container.encode(self.value, forKey: .value)
+      try container.encodeIfPresent(min, forKey: .min, defaultValue: 0)
+      try container.encodeIfPresent(max, forKey: .max, defaultValue: 1)
     }
   }
   public struct TextField: ElementProtocol, Identifiable, Codable, Sendable {
