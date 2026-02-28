@@ -57,7 +57,7 @@ public struct AppInterface: Codable, Sendable {
 }
 
 public enum ElementType: String, Codable {
-  case text, textField, button, list, picker, cell, files, fileOperation
+  case text, textField, button, slider, list, picker, cell, files, fileOperation
 }
 
 public protocol ElementProtocol {
@@ -71,6 +71,7 @@ public enum Element: Identifiable, Codable, Sendable {
     case .text(let a): a.id
     case .textField(let a): a.id
     case .button(let a): a.id
+    case .slider(let a): a.id
     case .list(let a): a.id
     case .picker(let a): a.id
     case .cell(let a): a.id
@@ -81,6 +82,7 @@ public enum Element: Identifiable, Codable, Sendable {
   case text(Text)
   case textField(TextField)
   case button(Button)
+  case slider(Slider)
   case list(List)
   case picker(Picker)
   case cell(Cell)
@@ -104,6 +106,8 @@ public enum Element: Identifiable, Codable, Sendable {
         self = try .textField(TextField(from: decoder))
       case .button:
         self = try .button(Button(from: decoder))
+      case .slider:
+        self = try .slider(Slider(from: decoder))
       case .list:
         self = try .list(List(from: decoder))
       case .picker:
@@ -120,30 +124,33 @@ public enum Element: Identifiable, Codable, Sendable {
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
     switch self {
-    case .text(let text):
-      try container.encode(ElementType.text, forKey: .type)
-      try text.encode(to: encoder)
-    case .textField(let textField):
-      try container.encode(ElementType.textField, forKey: .type)
-      try textField.encode(to: encoder)
-    case .button(let button):
-      try container.encode(ElementType.button, forKey: .type)
-      try button.encode(to: encoder)
-    case .list(let list):
-      try container.encode(ElementType.list, forKey: .type)
-      try list.encode(to: encoder)
-    case .picker(let picker):
-      try container.encode(ElementType.picker, forKey: .type)
-      try picker.encode(to: encoder)
-    case .cell(let cell):
-      try container.encode(ElementType.cell, forKey: .type)
-      try cell.encode(to: encoder)
-    case .files(let files):
-      try container.encode(ElementType.files, forKey: .type)
-      try files.encode(to: encoder)
-    case .fileOperation(let fileOperation):
-      try container.encode(ElementType.fileOperation, forKey: .type)
-      try fileOperation.encode(to: encoder)
+    case .text(let value):
+      try container.encode(value.type, forKey: .type)
+      try value.encode(to: encoder)
+    case .textField(let value):
+      try container.encode(value.type, forKey: .type)
+      try value.encode(to: encoder)
+    case .button(let value):
+      try container.encode(value.type, forKey: .type)
+      try value.encode(to: encoder)
+    case .slider(let value):
+      try container.encode(value.type, forKey: .type)
+      try value.encode(to: encoder)
+    case .list(let value):
+      try container.encode(value.type, forKey: .type)
+      try value.encode(to: encoder)
+    case .picker(let value):
+      try container.encode(value.type, forKey: .type)
+      try value.encode(to: encoder)
+    case .cell(let value):
+      try container.encode(value.type, forKey: .type)
+      try value.encode(to: encoder)
+    case .files(let value):
+      try container.encode(value.type, forKey: .type)
+      try value.encode(to: encoder)
+    case .fileOperation(let value):
+      try container.encode(value.type, forKey: .type)
+      try value.encode(to: encoder)
     }
   }
   public struct Text: ElementProtocol, Identifiable, Codable, Sendable {
@@ -174,17 +181,55 @@ public enum Element: Identifiable, Codable, Sendable {
     enum CodingKeys: CodingKey {
       case value, placeholder, action
     }
-    
-      public init(value: String, placeholder: String, action: Element.Action? = nil) {
-        self.value = value
-        self.placeholder = placeholder
-        self.action = action
-      }
+    public init(value: String, placeholder: String, action: Element.Action? = nil) {
+      self.value = value
+      self.placeholder = placeholder
+      self.action = action
+    }
     public init(from decoder: any Decoder) throws {
       let container = try decoder.container(keyedBy: CodingKeys.self)
       self.value = try container.decode(.value)
       self.placeholder = container.decodeIfPresent(.placeholder, "")
       self.action = try container.decode(.action)
+    }
+  }
+  public struct Slider: ElementProtocol, Identifiable, Codable, Sendable {
+    public var type: ElementType { .slider }
+    public let id = UUID().uuidString
+    public let value: String
+    public let defaultValue: Double?
+    public let min: Double
+    public let max: Double
+    public let step: Double?
+    public let action: Action?
+    enum CodingKeys: CodingKey {
+      case value, defaultValue, min, max, step, action
+    }
+    public init(value: String, defaultValue: Double? = nil, min: Double = 0, max: Double = 1, step: Double? = nil, action: Element.Action? = nil) {
+      self.value = value
+      self.defaultValue = defaultValue
+      self.min = min
+      self.max = max
+      self.step = step
+      self.action = action
+    }
+    public init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      self.value = try container.decode(.value)
+      self.defaultValue = container.decodeIfPresent(.defaultValue)
+      self.min = container.decodeIfPresent(.min, 0)
+      self.max = container.decodeIfPresent(.max, 1)
+      self.step = container.decodeIfPresent(.step)
+      self.action = container.decodeIfPresent(.action)
+    }
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(value, forKey: .value)
+      try container.encodeIfPresent(defaultValue, forKey: .defaultValue)
+      try container.encodeIfPresent(min, forKey: .min, defaultValue: 0)
+      try container.encodeIfPresent(max, forKey: .max, defaultValue: 1)
+      try container.encodeIfPresent(step, forKey: .step)
+      try container.encodeIfPresent(action, forKey: .action)
     }
   }
   public struct Button: ElementProtocol, Identifiable, Codable, Sendable {
