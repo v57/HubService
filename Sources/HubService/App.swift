@@ -403,13 +403,15 @@ public enum Element: Identifiable, Codable, Sendable {
     public let id = UUID().uuidString
     public let title: Element?
     public let value: String
+    public let format: String?
     public let action: Action
     enum CodingKeys: CodingKey {
-      case title, value, action
+      case title, value, format, action
     }
-    public init(title: Element?, value: String, action: Action) {
+    public init(title: Element?, value: String, format: String?, action: Action) {
       self.title = title
       self.value = value
+      self.format = format
       self.action = action
     }
   }
