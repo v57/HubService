@@ -183,3 +183,10 @@ public extension KeyedDecodingContainer {
       .compactMap { $0.value })
   }
 }
+
+public extension KeyedEncodingContainer {
+  mutating func encodeIfPresent<T: Codable & Equatable>(_ value: T, forKey key: Key, defaultValue: T) throws {
+    guard value != defaultValue else { return }
+    try encode(value, forKey: key)
+  }
+}
