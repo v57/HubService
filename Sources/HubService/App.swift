@@ -60,23 +60,26 @@ public enum ElementType: String, Codable {
   case text, textField, button, slider, list, picker, cell, files, fileOperation
 }
 
-public protocol ElementProtocol {
+public protocol ElementProtocol: Codable {
   var type: ElementType { get }
   var id: String { get }
 }
 
 public enum Element: Identifiable, Codable, Sendable {
   public var id: String {
+    element.id
+  }
+  var element: ElementProtocol {
     switch self {
-    case .text(let a): a.id
-    case .textField(let a): a.id
-    case .button(let a): a.id
-    case .slider(let a): a.id
-    case .list(let a): a.id
-    case .picker(let a): a.id
-    case .cell(let a): a.id
-    case .files(let a): a.id
-    case .fileOperation(let a): a.id
+    case .text(let value): return value
+    case .textField(let value): return value
+    case .button(let value): return value
+    case .slider(let value): return value
+    case .list(let value): return value
+    case .picker(let value): return value
+    case .cell(let value): return value
+    case .files(let value): return value
+    case .fileOperation(let value): return value
     }
   }
   case text(Text)
@@ -123,35 +126,9 @@ public enum Element: Identifiable, Codable, Sendable {
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
-    switch self {
-    case .text(let value):
-      try container.encode(value.type, forKey: .type)
-      try value.encode(to: encoder)
-    case .textField(let value):
-      try container.encode(value.type, forKey: .type)
-      try value.encode(to: encoder)
-    case .button(let value):
-      try container.encode(value.type, forKey: .type)
-      try value.encode(to: encoder)
-    case .slider(let value):
-      try container.encode(value.type, forKey: .type)
-      try value.encode(to: encoder)
-    case .list(let value):
-      try container.encode(value.type, forKey: .type)
-      try value.encode(to: encoder)
-    case .picker(let value):
-      try container.encode(value.type, forKey: .type)
-      try value.encode(to: encoder)
-    case .cell(let value):
-      try container.encode(value.type, forKey: .type)
-      try value.encode(to: encoder)
-    case .files(let value):
-      try container.encode(value.type, forKey: .type)
-      try value.encode(to: encoder)
-    case .fileOperation(let value):
-      try container.encode(value.type, forKey: .type)
-      try value.encode(to: encoder)
-    }
+    let value = element
+    try container.encode(value.type, forKey: .type)
+    try value.encode(to: encoder)
   }
   public struct Text: ElementProtocol, Identifiable, Codable, Sendable {
     public var type: ElementType { .text }
