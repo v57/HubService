@@ -186,7 +186,7 @@ public enum Element: Identifiable, Codable, Sendable {
     }
   }
   public struct Progress: ElementProtocol, Identifiable, Codable, Sendable {
-    public var type: ElementType { .text }
+    public var type: ElementType { .progress }
     public let id = UUID().uuidString
     public let value: String
     public let min: Double
