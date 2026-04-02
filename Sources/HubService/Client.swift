@@ -58,17 +58,17 @@ public class HubClient {
     try await sender.send(path, body)
   }
   // With context
-  public func send<Context: Encodable, Output: Decodable>(_ path: String, context: Context?) async throws -> Output {
-    try await sender.send(path, context: context)
+  public func send<Context: Encodable & Sendable, Output: Decodable>(_ path: String, context: Context?) async throws -> Output {
+    try await sender.send(path, options: SendOptions(context: context))
   }
-  public func send<Context: Encodable>(_ path: String, context: Context?) async throws {
-    try await sender.send(path, context: context)
+  public func send<Context: Encodable & Sendable>(_ path: String, context: Context?) async throws {
+    try await sender.send(path, options: SendOptions(context: context))
   }
-  public func send<Body: Encodable, Context: Encodable>(_ path: String, _ body: Body?, context: Context?) async throws {
-    try await sender.send(path, body, context: context)
+  public func send<Body: Encodable, Context: Encodable & Sendable>(_ path: String, _ body: Body?, context: Context?) async throws {
+    try await sender.send(path, body, options: SendOptions(context: context))
   }
-  public func send<Body: Encodable, Context: Encodable, Output: Decodable>(_ path: String, _ body: Body?, context: Context?) async throws -> Output {
-    try await sender.send(path, body, context: context)
+  public func send<Body: Encodable, Context: Encodable & Sendable, Output: Decodable>(_ path: String, _ body: Body?, context: Context?) async throws -> Output {
+    try await sender.send(path, body, options: SendOptions(context: context))
   }
   // No body
   public func values<Output: Decodable>(_ path: String) -> Values<Void, EmptyCodable, EmptyCodable, Output> {
@@ -85,17 +85,17 @@ public class HubClient {
     sender.values(path, body)
   }
   // With context
-  public func values<Context: Encodable, Output: Decodable>(_ path: String, context: Context?) -> Values<Void, EmptyCodable, Context, Output> {
-    sender.values(path, context: context)
+  public func values<Context: Encodable & Sendable, Output: Decodable>(_ path: String, context: Context?) -> Values<Void, EmptyCodable, Context, Output> {
+    sender.values(path, options: SendOptions(context: context))
   }
-  public func values<Context: Encodable>(_ path: String, context: Context?) -> Values<Void, EmptyCodable, Context, EmptyCodable> {
-    sender.values(path, context: context)
+  public func values<Context: Encodable & Sendable>(_ path: String, context: Context?) -> Values<Void, EmptyCodable, Context, EmptyCodable> {
+    sender.values(path, options: SendOptions(context: context))
   }
-  public func values<Body: Encodable, Context: Encodable>(_ path: String, _ body: Body?, context: Context?) -> Values<Void, Body, Context, EmptyCodable> {
-    sender.values(path, body, context: context)
+  public func values<Body: Encodable, Context: Encodable & Sendable>(_ path: String, _ body: Body?, context: Context?) -> Values<Void, Body, Context, EmptyCodable> {
+    sender.values(path, body, options: SendOptions(context: context))
   }
-  public func values<Body: Encodable, Context: Encodable, Output: Decodable>(_ path: String, _ body: Body?, context: Context?) -> Values<Void, Body, Context, Output> {
-    sender.values(path, body, context: context)
+  public func values<Body: Encodable, Context: Encodable & Sendable, Output: Decodable>(_ path: String, _ body: Body?, context: Context?) -> Values<Void, Body, Context, Output> {
+    sender.values(path, body, options: SendOptions(context: context))
   }
   public func stop() {
     sender.stop()
