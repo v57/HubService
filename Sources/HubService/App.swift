@@ -37,6 +37,7 @@ public struct AppInterface: Codable, Sendable {
   public var top: Element?
   public var bottom: Element?
   public var data: [String: AnyCodable]?
+  public var warnings: Int
   enum CodingKeys: CodingKey {
     case header, body, top, bottom, data
   }
@@ -47,17 +48,22 @@ public struct AppInterface: Codable, Sendable {
     self.bottom = bottom
     self.body = body
     self.data = data
+    self.warnings = 0
   }
   public init() {
-    
+    warnings = 0
   }
   public init(from decoder: any Decoder) throws {
-    let container = try decoder.container(keyedBy: CodingKeys.self)
-    header = container.decodeIfPresent(.header)
-    body = container.decodeLossyIfPresent(.body)
-    top = container.decodeIfPresent(.top)
-    bottom = container.decodeIfPresent(.bottom)
-    data = container.decodeIfPresent(.data)
+    let counter = DecodingWarnings.Counter()
+    (header, body, top, bottom, data, warnings) = try DecodingWarnings.$counter.withValue(counter) {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      let header: AppHeader? = container.decodeIfPresent(.header)
+      let body: [Element]? = container.decodeLossyIfPresent(.body)
+      let top: Element? = container.decodeIfPresent(.top)
+      let bottom: Element? = container.decodeIfPresent(.bottom)
+      let data: [String: AnyCodable]? = container.decodeIfPresent(.data)
+      return (header, body, top, bottom, data, counter.count)
+    }
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)

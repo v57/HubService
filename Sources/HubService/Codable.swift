@@ -142,7 +142,12 @@ public extension AnyCodable {
 struct Lossy<T: Decodable>: Decodable {
   let value: T?
   init(from decoder: any Decoder) throws {
-    value = try? decoder.decode()
+    do {
+      value = try decoder.decode()
+    } catch {
+      addWarning()
+      value = nil
+    }
   }
 }
 struct LossyArray<Element: Decodable>: Decodable {
@@ -158,7 +163,12 @@ public extension Decoder {
     try singleValueContainer().decode(T.self)
   }
   func decodeLossy<Element: Decodable>() throws -> [Element] {
-    try singleValueContainer().decode([Lossy<Element>].self).compactMap { $0.value }
+    do {
+      return try singleValueContainer().decode([Lossy<Element>].self).compactMap { $0.value }
+    } catch {
+      addWarning()
+      return []
+    }
   }
 }
 
@@ -169,19 +179,59 @@ public extension KeyedDecodingContainer {
   }
   @inlinable
   func decodeIfPresent<T: Decodable>(_ key: K) -> T? {
-    try? decodeIfPresent(T.self, forKey: key)
+    do {
+      return try decodeIfPresent(T.self, forKey: key)
+    } catch {
+      addWarning()
+      return nil
+    }
   }
   @inlinable
   func decodeIfPresent<T: Decodable>(_ key: K, _ defalutValue: @autoclosure () -> (T)) -> T {
-    (try? decodeIfPresent(T.self, forKey: key)) ?? defalutValue()
+    decodeIfPresent(key) ?? defalutValue()
   }
   func decodeLossy<Element: Decodable>(_ key: K) -> [Element] {
-    (try? decode([Lossy<Element>].self, forKey: key).compactMap { $0.value }) ?? []
+    do {
+      return try decode([Lossy<Element>].self, forKey: key).compactMap { $0.value }
+    } catch {
+      addWarning()
+      return []
+    }
   }
   func decodeLossyIfPresent<Element: Decodable>(_ key: K) -> [Element]? {
-    (try? decodeIfPresent([Lossy<Element>].self, forKey: key)?
-      .compactMap { $0.value })
+    do {
+      return try decodeIfPresent([Lossy<Element>].self, forKey: key)?
+        .compactMap { $0.value }
+    } catch {
+      addWarning()
+      return nil
+    }
   }
+}
+
+@usableFromInline
+enum DecodingWarnings {
+  @usableFromInline
+  @TaskLocal static var counter: Counter?
+  
+  @usableFromInline
+  final class Counter: @unchecked Sendable {
+    private(set) var count = 0
+    
+    @usableFromInline
+    init() {}
+    
+    @usableFromInline
+    func increment() {
+      count += 1
+    }
+  }
+}
+
+@usableFromInline
+@inline(__always)
+func addWarning() {
+  DecodingWarnings.counter?.increment()
 }
 
 public extension KeyedEncodingContainer {
