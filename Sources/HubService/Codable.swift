@@ -139,6 +139,19 @@ public extension AnyCodable {
   }
 }
 
+extension Date {
+  public static let _formatted: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.dateStyle = .short
+    formatter.timeStyle = .short
+    return formatter
+  }()
+  @backDeployed(before: macOS 12.0, iOS 15.0, tvOS 15.0, watchOS 8.0)
+  public func formatted() -> String {
+    Date._formatted.string(from: self)
+  }
+}
+
 struct Lossy<T: Decodable>: Decodable {
   let value: T?
   init(from decoder: any Decoder) throws {
