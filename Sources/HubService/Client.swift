@@ -10,7 +10,8 @@ import Combine
 import Channel
 
 @MainActor
-public class HubClient {
+public class HubClient: @MainActor Identifiable {
+  public var id: URL { url }
   public nonisolated static var local: URL { URL(string: "ws://127.0.0.1:1997")! }
   public var isConnected: Published<Bool>.Publisher {
     sender.ws.$isConnected
@@ -19,11 +20,13 @@ public class HubClient {
     get { sender.ws.debug }
     set { sender.ws.debug = newValue }
   }
+  public let url: URL
   public let channel: Channel<Void>
   public let service: HubService
   public var profile: Profile
   private var sender: ClientSender<Void>!
   public init(_ url: URL = HubClient.local, keyChain: KeyChain? = nil) {
+    self.url = url
     channel = Channel()
     service = HubService(channel: channel)
     profile = Profile(name: .device, icon: .device)
