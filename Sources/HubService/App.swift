@@ -20,6 +20,9 @@ public struct App: Sendable {
     self.bottom = bottom
     self.data = data
   }
+  public init(header: AppHeader, top: Element? = nil, bottom: Element? = nil, data: [String: AnyCodable] = [:], @ElementBuilder body: () -> [Element]) {
+    self.init(header: header, body: body(), top: top, bottom: bottom, data: data)
+  }
 }
 
 public extension HubService {
@@ -47,6 +50,14 @@ public struct AppInterface: Codable, Sendable {
     self.top = top
     self.bottom = bottom
     self.body = body
+    self.data = data
+    self.warnings = 0
+  }
+  public init(header: AppHeader? = nil, top: Element? = nil, bottom: Element? = nil, data: [String: AnyCodable]? = nil, @ElementBuilder body: () -> [Element]) {
+    self.header = header
+    self.top = top
+    self.bottom = bottom
+    self.body = body()
     self.data = data
     self.warnings = 0
   }
@@ -317,6 +328,10 @@ public enum Element: Identifiable, Codable, Sendable {
       self.spacing = spacing
       self.content = content
     }
+    public init(spacing: Double? = nil, @ElementBuilder content: () -> [Element]) {
+      self.spacing = spacing
+      self.content = content()
+    }
     public init(from decoder: any Decoder) throws {
       let container = try decoder.container(keyedBy: CodingKeys.self)
       self.spacing = container.decodeIfPresent(.spacing)
@@ -335,6 +350,10 @@ public enum Element: Identifiable, Codable, Sendable {
       self.spacing = spacing
       self.content = content
     }
+    public init(spacing: Double? = nil, @ElementBuilder content: () -> [Element]) {
+      self.spacing = spacing
+      self.content = content()
+    }
     public init(from decoder: any Decoder) throws {
       let container = try decoder.container(keyedBy: CodingKeys.self)
       self.spacing = container.decodeIfPresent(.spacing)
@@ -350,6 +369,9 @@ public enum Element: Identifiable, Codable, Sendable {
     }
     public init(content: [Element]) {
       self.content = content
+    }
+    public init(@ElementBuilder content: () -> [Element]) {
+      self.content = content()
     }
     public init(from decoder: any Decoder) throws {
       let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -462,5 +484,86 @@ public enum Element: Identifiable, Codable, Sendable {
       case .void: break
       }
     }
+  }
+}
+
+public typealias HText = Element.Text
+public typealias HProgress = Element.Progress
+public typealias HTextField = Element.TextField
+public typealias HSlider = Element.Slider
+public typealias HButton = Element.Button
+public typealias HList = Element.List
+public typealias HPicker = Element.Picker
+public typealias HCell = Element.Cell
+public typealias HFiles = Element.Files
+public typealias HFileOperation = Element.FileOperation
+public typealias HHStack = Element.HStack
+public typealias HVStack = Element.VStack
+public typealias HZStack = Element.ZStack
+public typealias HSpacer = Element.Spacer
+public typealias HAction = Element.Action
+public typealias HActionBody = Element.ActionBody
+
+@resultBuilder
+public enum ElementBuilder {
+  public static func buildBlock(_ components: [Element]...) -> [Element] {
+    components.flatMap { $0 }
+  }
+  public static func buildExpression(_ expression: Element) -> [Element] {
+    [expression]
+  }
+  public static func buildExpression(_ expression: [Element]) -> [Element] {
+    expression
+  }
+  public static func buildExpression(_ expression: Element.Text) -> [Element] {
+    [.text(expression)]
+  }
+  public static func buildExpression(_ expression: Element.Progress) -> [Element] {
+    [.progress(expression)]
+  }
+  public static func buildExpression(_ expression: Element.TextField) -> [Element] {
+    [.textField(expression)]
+  }
+  public static func buildExpression(_ expression: Element.Slider) -> [Element] {
+    [.slider(expression)]
+  }
+  public static func buildExpression(_ expression: Element.Button) -> [Element] {
+    [.button(expression)]
+  }
+  public static func buildExpression(_ expression: Element.List) -> [Element] {
+    [.list(expression)]
+  }
+  public static func buildExpression(_ expression: Element.Picker) -> [Element] {
+    [.picker(expression)]
+  }
+  public static func buildExpression(_ expression: Element.Cell) -> [Element] {
+    [.cell(expression)]
+  }
+  public static func buildExpression(_ expression: Element.HStack) -> [Element] {
+    [.hstack(expression)]
+  }
+  public static func buildExpression(_ expression: Element.VStack) -> [Element] {
+    [.vstack(expression)]
+  }
+  public static func buildExpression(_ expression: Element.ZStack) -> [Element] {
+    [.zstack(expression)]
+  }
+  public static func buildExpression(_ expression: Element.Spacer) -> [Element] {
+    [.spacer(expression)]
+  }
+  public static func buildOptional(_ component: [Element]?) -> [Element] {
+    component ?? []
+  }
+  public static func buildEither(first component: [Element]) -> [Element] {
+    component
+  }
+  public static func buildEither(second component: [Element]) -> [Element] {
+    component
+  }
+  public static func buildArray(_ components: [[Element]]) -> [Element] {
+    components.flatMap { $0 }
+  }
+  public static func buildLimitedAvailability(_ component: [Element]) -> [Element] {
+    component
   }
 }
