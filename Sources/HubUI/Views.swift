@@ -19,21 +19,7 @@ public struct HubAppView: View {
     self.header = header
   }
   public var body: some View {
-    GeometryReader { view in
-      ScrollView {
-        VStack {
-          if let body = app.app.body {
-            ForEach(body) { element in
-              element
-            }
-          }
-        }.frame(minHeight: view.size.height)
-      }.safeAreaInset(edge: .bottom) {
-        if app.app.warnings > 0 {
-          Text("Service is using newer interface. Some elements will not be displayed properly").secondary()
-        }
-      }
-    }.safeAreaPadding().toolbar {
+    Content().toolbar {
       ServiceProvider.Picker(path: header.path, context: $context)
     }.syncProviders(path: header.path)
     .navigationTitle(app.app.header?.name ?? header.name)
@@ -41,6 +27,26 @@ public struct HubAppView: View {
     .task(id: HubTask(id: hub.id, path: header.path, context: context)) {
       app.reset()
       await app.sync(hub: hub, path: header.path, context: context)
+    }
+  }
+  public struct Content: View {
+    @Environment(ServiceApp.self) var app
+    public var body: some View {
+      GeometryReader { view in
+        ScrollView {
+          VStack {
+            if let body = app.app.body {
+              ForEach(body) { element in
+                element
+              }
+            }
+          }.frame(minHeight: view.size.height)
+        }.safeAreaInset(edge: .bottom) {
+          if app.app.warnings > 0 {
+            Text("Service is using newer interface. Some elements will not be displayed properly").secondary()
+          }
+        }
+      }.safeAreaPadding()
     }
   }
 }
