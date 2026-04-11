@@ -52,6 +52,33 @@ public struct HubAppView: View {
 }
 
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+public struct AppPreview: View {
+  @State private var app: ServiceApp
+  public init(@ElementBuilder body: () -> [Element]) {
+    let app = ServiceApp()
+    app.app.body = body()
+    _app = State(initialValue: app)
+  }
+  public var body: some View {
+    HubAppView.Content()
+      .environment(app)
+      .environmentObject(HubClient.test)
+  }
+  public func top(_ make: () -> Element) -> Self {
+    app.app.top = make()
+    return self
+  }
+  public func bottom(_ make: () -> Element) -> Self {
+    app.app.bottom = make()
+    return self
+  }
+  public func data(_ data: [String: AnyCodable]) -> Self {
+    app.app.data = data
+    return self
+  }
+}
+
+@available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 extension Element: View {
   @MainActor
   struct AppState: DynamicProperty {

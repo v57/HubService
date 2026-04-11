@@ -11,6 +11,7 @@ import Channel
 
 @MainActor
 public class HubClient: @MainActor Identifiable {
+  public static let test = HubClient(connect: false)
   public var id: URL { url }
   public nonisolated static var local: URL { URL(string: "ws://127.0.0.1:1997")! }
   public var isConnected: Published<Bool>.Publisher {
@@ -25,11 +26,12 @@ public class HubClient: @MainActor Identifiable {
   public let service: HubService
   public var profile: Profile
   private var sender: ClientSender<Void>!
-  public init(_ url: URL = HubClient.local, keyChain: KeyChain? = nil) {
+  public init(_ url: URL = HubClient.local, keyChain: KeyChain? = nil, connect: Bool = true) {
     self.url = url
     channel = Channel()
     service = HubService(channel: channel)
     profile = Profile(name: .device, icon: .device)
+    guard connect else { return }
     if let keyChain {
       sender = channel.connect(url, options: ClientOptions(headers: {
         let key = keyChain.publicKey()
