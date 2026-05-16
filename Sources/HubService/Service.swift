@@ -18,34 +18,48 @@ public class HubService {
   }
   var disabled = Set<String>()
   var groups = [Group]()
+  private var options = [String: Options]()
   private var serviceUpdatesTask: Task<Void, Error>? {
     didSet { oldValue?.cancel() }
   }
   public init(channel: Channel<Void>) {
     self.channel = channel
   }
-  public func post<Input: Decodable & Sendable, Output: Encodable & Sendable>(_ path: String, request: @escaping (@Sendable (Input) async throws -> Output)) -> Self {
-    _ = channel.post(path, request: request)
-    return self
+  public func post<Input: Decodable & Sendable, Output: Encodable & Sendable>(_ path: String, options: Options? = nil, request: @escaping (@Sendable (Input) async throws -> Output)) -> Self {
+    add(path: path, options: options) {
+      $0.post(path, request: request)
+    }
   }
-  public func post<Input: Decodable & Sendable>(_ path: String, request: @escaping (@Sendable (Input) async throws -> Void)) -> Self {
-    _ = channel.post(path, request: request)
-    return self
+  public func post<Input: Decodable & Sendable>(_ path: String, options: Options? = nil, request: @escaping (@Sendable (Input) async throws -> Void)) -> Self {
+    add(path: path, options: options) {
+      $0.post(path, request: request)
+    }
   }
-  public func post<Output: Encodable & Sendable>(_ path: String, request: @escaping (@Sendable () async throws -> Output)) -> Self {
-    _ = channel.post(path, request: request)
-    return self
+  public func post<Output: Encodable & Sendable>(_ path: String, options: Options? = nil, request: @escaping (@Sendable () async throws -> Output)) -> Self {
+    add(path: path, options: options) {
+      $0.post(path, request: request)
+    }
   }
-  public func post(_ path: String, request: @escaping (@Sendable () async throws -> Void)) -> Self {
-    _ = channel.post(path, request: request)
-    return self
+  public func post(_ path: String, options: Options? = nil, request: @escaping (@Sendable () async throws -> Void)) -> Self {
+    add(path: path, options: options) {
+      $0.post(path, request: request)
+    }
   }
-  public func stream<Input: Decodable & Sendable>(_ path: String, request: @escaping @Sendable (Input, AsyncThrowingStream<Encodable & Sendable, Error>.Continuation) async throws -> Void) -> Self {
-    _ = channel.stream(path, request: request)
-    return self
+  public func stream<Input: Decodable & Sendable>(_ path: String, options: Options? = nil, request: @escaping @Sendable (Input, AsyncThrowingStream<Encodable & Sendable, Error>.Continuation) async throws -> Void) -> Self {
+    add(path: path, options: options) {
+      $0.stream(path, request: request)
+    }
   }
-  public func stream(_ path: String, request: @escaping @Sendable (AsyncThrowingStream<Encodable & Sendable, Error>.Continuation) async throws -> Void) -> Self {
-    _ = channel.stream(path, request: request)
+  public func stream(_ path: String, options: Options? = nil, request: @escaping @Sendable (AsyncThrowingStream<Encodable & Sendable, Error>.Continuation) async throws -> Void) -> Self {
+    add(path: path, options: options) {
+      $0.stream(path, request: request)
+    }
+  }
+  private func add(path: String, options: Options?, add: (Channel<Void>) -> Channel<Void>) -> Self {
+    if let options {
+      self.options[path] = options
+    }
+    _ = add(channel)
     return self
   }
   public func sendServiceUpdates() {
@@ -66,7 +80,7 @@ public class HubService {
       }
     }
     let apps = apps.filter { !disabledApps.contains($0.path) }
-    let update = HubService.Update(services: api.map { ServiceHeader(path: $0) }, apps: apps)
+    let update = HubService.Update(services: api.map { ServiceHeader(path: $0, limit: options[$0]?.limit) }, apps: apps)
     if !first || !update.isEmpty {
       try await sender.send("hub/service/update", update)
     }
@@ -80,6 +94,17 @@ public class HubService {
     var services: [ServiceHeader]
     var apps: [AppHeader]
     var isEmpty: Bool { services.isEmpty && apps.isEmpty }
+  }
+  
+  private enum ApiPath: Hashable {
+    case stream(String)
+    case post(String)
+  }
+  public struct Options: Hashable {
+    public var limit: Int?
+    public init(limit: Int? = nil) {
+      self.limit = limit
+    }
   }
   
   @MainActor
@@ -161,7 +186,9 @@ public struct AppHeader: Identifiable, Hashable, Codable, Sendable {
 
 struct ServiceHeader: Encodable, Sendable {
   let path: String
-  init(path: String) {
+  let limit: Int?
+  init(path: String, limit: Int?) {
     self.path = path
+    self.limit = limit
   }
 }
