@@ -127,28 +127,28 @@ public class HubService {
       self.apis.insert(path)
       return self
     }
-    public func post<Input: Decodable & Sendable, Output: Encodable & Sendable>(_ path: String, request: @escaping (@Sendable (Input) async throws -> Output)) -> Self {
-      _ = service?.post(path, request: request)
+    public func post<Input: Decodable & Sendable, Output: Encodable & Sendable>(_ path: String, options: Options? = nil, request: @escaping (@Sendable (Input) async throws -> Output)) -> Self {
+      _ = service?.post(path, options: options, request: request)
       return append(path)
     }
-    public func post<Input: Decodable & Sendable>(_ path: String, request: @escaping (@Sendable (Input) async throws -> Void)) -> Self {
-      _ = service?.post(path, request: request)
+    public func post<Input: Decodable & Sendable>(_ path: String, options: Options? = nil, request: @escaping (@Sendable (Input) async throws -> Void)) -> Self {
+      _ = service?.post(path, options: options, request: request)
       return append(path)
     }
-    public func post<Output: Encodable & Sendable>(_ path: String, request: @escaping (@Sendable () async throws -> Output)) -> Self {
-      _ = service?.post(path, request: request)
+    public func post<Output: Encodable & Sendable>(_ path: String, options: Options? = nil, request: @escaping (@Sendable () async throws -> Output)) -> Self {
+      _ = service?.post(path, options: options, request: request)
       return append(path)
     }
-    public func post(_ path: String, request: @escaping (@Sendable () async throws -> Void)) -> Self {
-      _ = service?.post(path, request: request)
+    public func post(_ path: String, options: Options? = nil, request: @escaping (@Sendable () async throws -> Void)) -> Self {
+      _ = service?.post(path, options: options, request: request)
       return append(path)
     }
-    public func stream<Input: Decodable & Sendable>(_ path: String, request: @escaping @Sendable (Input, AsyncThrowingStream<Encodable & Sendable, Error>.Continuation) async throws -> Void) -> Self {
-      _ = service?.stream(path, request: request)
+    public func stream<Input: Decodable & Sendable>(_ path: String, options: Options? = nil, request: @escaping @Sendable (Input, AsyncThrowingStream<Encodable & Sendable, Error>.Continuation) async throws -> Void) -> Self {
+      _ = service?.stream(path, options: options, request: request)
       return append(path)
     }
-    public func stream(_ path: String, request: @escaping @Sendable (AsyncThrowingStream<Encodable & Sendable, Error>.Continuation) async throws -> Void) -> Self {
-      _ = service?.stream(path, request: request)
+    public func stream(_ path: String, options: Options? = nil, request: @escaping @Sendable (AsyncThrowingStream<Encodable & Sendable, Error>.Continuation) async throws -> Void) -> Self {
+      _ = service?.stream(path, options: options, request: request)
       return append(path)
     }
     public func app(_ app: App) -> Self {
