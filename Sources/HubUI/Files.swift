@@ -9,15 +9,13 @@ import SwiftUI
 import UniformTypeIdentifiers
 import HubService
 
-extension HubClient {
+private extension HubClient {
   static let test = HubClient(URL(string: "ws://127.0.0.1:1997")!, keyChain: KeyChain())
 }
 
 @available(macOS 14.0, iOS 17.0, *)
 #Preview {
-  HubFiles(path: "")
-    .syncProviders(path: "s3/list")
-    .environmentObject(HubClient.test)
+  HubFiles(path: "").environmentObject(HubClient.test)
 }
 
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
@@ -55,12 +53,10 @@ public struct HubFiles: View {
               }.keyboardShortcut(.delete)
             }
           }
-        }.syncProviders(path: "s3/list").dropDestination { (files: [URL], point: CGPoint) -> Bool in
+        }.dropDestination { (files: [URL], point: CGPoint) -> Bool in
           add(files: files)
           return true
-        }.environment(\.serviceContext, context)
-          .navigationTitle("Files")
-          .modifier(SubtitleModifier(path: path))
+        }.environment(\.serviceContext, context).modifier(SubtitleModifier(path: path))
           .task(id: HubTask(id: hub.id, path: path, context: context)) {
             do {
               list = FileList(count: 0, files: [], directories: [])
@@ -74,7 +70,7 @@ public struct HubFiles: View {
           .onChange(of: context.service) { selected = [] }
       }
 #endif
-    }
+    }.navigationTitle("Files").syncProviders(path: "s3/list")
   }
   
   struct SelectionList: View {
