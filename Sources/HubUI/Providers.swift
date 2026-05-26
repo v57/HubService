@@ -42,7 +42,7 @@ public struct ServiceProvider: Codable, Sendable, Hashable, Identifiable {
           ForEach(providers) { provider in
             Text(provider.label).tag(provider.id)
           }
-        }.pickerStyle(.main).task(id: providers) {
+        }.task(id: providers) {
           guard let service = context.service else { return }
           guard !providers.contains(where: { $0.id == service }) else { return }
           context.service = nil

@@ -270,11 +270,15 @@ extension Element: View {
     }
     var body: some View {
       let v = state.doubleBinding(value.value, defaultValue: value.max)
+#if os(tvOS)
+      SwiftUI.Text("Sliders are not available on Apple TV").note()
+#else
       if let step = value.step {
         SwiftUI.Slider(value: v, in: range, step: step).frame(maxWidth: 150)
       } else {
         SwiftUI.Slider(value: v, in: range).frame(maxWidth: 150)
       }
+#endif
     }
   }
   struct ButtonView: View {

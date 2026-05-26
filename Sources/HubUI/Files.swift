@@ -9,6 +9,17 @@ import SwiftUI
 import UniformTypeIdentifiers
 import HubService
 
+extension HubClient {
+  static let test = HubClient(URL(string: "ws://127.0.0.1:1997")!, keyChain: KeyChain())
+}
+
+@available(macOS 14.0, iOS 17.0, *)
+#Preview {
+  HubFiles(path: "")
+    .syncProviders(path: "s3/list")
+    .environmentObject(HubClient.test)
+}
+
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 public struct HubFiles: View {
   @EnvironmentObject private var hub: HubClient
@@ -16,102 +27,147 @@ public struct HubFiles: View {
   @State private var context = HubContext()
   @State private var list = FileList(count: 0, files: [], directories: [])
   @State private var selected: Set<String> = []
-  @State var path: String = ""
-  private var directories: [FileInfo] {
-    uploadManager.directories(for: hub, at: path, with: list.directories, context: context)
-      .map { FileInfo(name: $0, size: 0, lastModified: nil) }
-      .sorted(using: sortOrder)
-  }
-  private var files: [FileInfo] {
-    uploadManager.files(for: hub, at: path, with: list.files, context: context)
-      .sorted(using: sortOrder)
-  }
+  @State private var path: String
   @State private var uploadManager = UploadManager.main
-  @State private var sortOrder = [KeyPathComparator(\FileInfo.name, comparator: .localized)]
-  public init() { }
-  public init(path: String) {
+  public init(path: String = "") {
     _path = State(initialValue: path)
   }
   public var body: some View {
+    NavigationSplitView {
+      SelectionList(context: $context)
+    } detail: {
 #if !os(tvOS)
-    Table(of: FileInfo.self, selection: $selected, sortOrder: $sortOrder) {
-      TableColumn("Name", value: \FileInfo.name) { (file: FileInfo) in
-        NameView(file: file, path: path).tint(selected.contains(file.name) ? .white : .blue)
-      }
-      TableColumn("Size", value: \FileInfo.size) { (file: FileInfo) in
-        Text(file.size.bytesString)
-          .foregroundStyle(.secondary)
-      }.width(60)
-      TableColumn("Last Modified", value: \FileInfo.lastModified) { (file: FileInfo) in
-        if let date = file.lastModified {
-          Text(date, format: .dateTime).foregroundStyle(.secondary)
-        } else {
-          Text("")
-        }
-      }.width(110)
-    } rows: {
-      TableRow(FileInfo(name: path.isEmpty ? "$\(name)" : "/\(path)", size: 0, lastModified: nil))
-      ForEach(directories, id: \.self) { file in
-        TableRow(file).draggable(DirectoryTransfer(hub: hub, name: file.name, context: context))
-      }
-      ForEach(files) { file in
-        TableRow(file).draggable(FileInfoTransfer(hub: hub, file: file, context: context))
-      }
-    }
-    Text("").contextMenu(forSelectionType: String.self) { (files: Set<String>) in
-      if files.count == 1, let file = files.first, file.last != "/" {
-        Button("Copy temporary link", systemImage: "link") {
-          Task {
-            let link: String = try await hub.send("s3/read", path + file, context: context)
-            link.copyToClipboard()
+      if context.service != nil {
+        ListView(context: context, list: list, selected: $selected, path: $path).toolbar {
+          if !path.isEmpty {
+            ToolbarItem(placement: .navigation) {
+              Button("Previous", systemImage: "arrow.up.folder") {
+                path = path.parentDirectory
+              }.flipsForRightToLeftLayoutDirection(true)
+            }
           }
-        }
-      }
-      Button("Delete", systemImage: "trash", role: .destructive) {
-        Task { await remove(files: Array(files)) }
-      }.keyboardShortcut(.delete)
-    } primaryAction: { files in
-      if files.count == 1, let file = files.first, file.hasSuffix("/") {
-        guard !file.isEmpty else { return }
-        if file.hasPrefix("/") {
-          path = path.parentDirectory
-        } else {
-          path += file
-        }
-      }
-    }.toolbar {
-      ServiceProvider.Picker(path: "s3/list", context: $context)
-      if !path.isEmpty {
-        Button("Back", systemImage: "chevron.left") {
-          path = path.parentDirectory
-        }
-      }
-      if selected.count > 0 {
-        Button("Delete Selected", systemImage: "trash", role: .destructive) {
-          Task {
-            await remove(files: Array(selected))
+          if selected.count > 0 {
+            ToolbarItem(placement: .destructiveAction) {
+              Button("Delete Selected", systemImage: "trash", role: .destructive) {
+                Task {
+                  await remove(files: Array(selected))
+                }
+              }.keyboardShortcut(.delete)
+            }
           }
-        }.keyboardShortcut(.delete)
-      }
-    }.syncProviders(path: "s3/list").dropDestination { (files: [URL], point: CGPoint) -> Bool in
-      add(files: files)
-      return true
-    }.environment(\.serviceContext, context)
-      .navigationTitle("Storage").task(id: HubTask(id: hub.id, path: path, context: context)) {
-        do {
-          list = FileList(count: 0, files: [], directories: [])
-          for try await list: FileList in hub.values("s3/list", path, context: context) {
-            self.list = list
-          }
-        } catch {
-          list = FileList(count: 0, files: [], directories: [])
-        }
-      }
-      .contentTransition(.symbolEffect(.replace))
-      .progressDraw().onChange(of: context.service) {
-        selected = []
+        }.syncProviders(path: "s3/list").dropDestination { (files: [URL], point: CGPoint) -> Bool in
+          add(files: files)
+          return true
+        }.environment(\.serviceContext, context)
+          .navigationTitle("Files")
+          .modifier(SubtitleModifier(path: path))
+          .task(id: HubTask(id: hub.id, path: path, context: context)) {
+            do {
+              list = FileList(count: 0, files: [], directories: [])
+              for try await list: FileList in hub.values("s3/list", path, context: context) {
+                self.list = list
+              }
+            } catch {
+              list = FileList(count: 0, files: [], directories: [])
+            }
+          }.contentTransition(.symbolEffect(.replace)).progressDraw()
+          .onChange(of: context.service) { selected = [] }
       }
 #endif
+    }
+  }
+  
+  struct SelectionList: View {
+    @Environment(\.serviceProviders) private var providers
+    @Binding var context: HubContext
+    var body: some View {
+      List(selection: $context.service) {
+        Section("Locations") {
+          ForEach(providers) { provider in
+            Label(provider.name ?? "Storage", systemImage: "externaldrive")
+          }
+        }
+      }
+    }
+  }
+  
+  @available(iOS 17.0, macOS 14.0, *)
+  @available(tvOS, unavailable)
+  @available(watchOS, unavailable)
+  struct ListView: View {
+    @EnvironmentObject private var hub: HubClient
+    @Environment(\.hubName) private var name
+    let context: HubContext
+    let list: FileList
+    @Binding var selected: Set<String>
+    @Binding var path: String
+    @State private var uploadManager = UploadManager.main
+    @State private var sortOrder = [
+      KeyPathComparator(\FileInfo.name, comparator: .localized)
+    ]
+    
+    private var directories: [FileInfo] {
+      uploadManager.directories(for: hub, at: path, with: list.directories, context: context)
+        .map { FileInfo(name: $0, size: 0, lastModified: nil) }
+        .sorted(using: sortOrder)
+    }
+    private var files: [FileInfo] {
+      uploadManager.files(for: hub, at: path, with: list.files, context: context)
+        .sorted(using: sortOrder)
+    }
+    var body: some View {
+      Table(of: FileInfo.self, selection: $selected, sortOrder: $sortOrder) {
+        TableColumn("Name", value: \FileInfo.name) { (file: FileInfo) in
+          NameView(file: file, path: path).tint(selected.contains(file.name) ? .white : .blue)
+        }
+        TableColumn("Size", value: \FileInfo.size) { (file: FileInfo) in
+          Text(file.size.bytesString)
+            .foregroundStyle(.secondary)
+        }.width(60)
+        TableColumn("Last Modified", value: \FileInfo.lastModified) { (file: FileInfo) in
+          if let date = file.lastModified {
+            Text(date, format: .dateTime).foregroundStyle(.secondary)
+          } else {
+            Text("")
+          }
+        }.width(110)
+      } rows: {
+        ForEach(directories, id: \.self) { file in
+          TableRow(file).draggable(DirectoryTransfer(hub: hub, name: file.name, context: context))
+        }
+        ForEach(files) { file in
+          TableRow(file).draggable(FileInfoTransfer(hub: hub, file: file, context: context))
+        }
+      }.contextMenu(forSelectionType: String.self) { (files: Set<String>) in
+        if files.count == 1, let file = files.first, file.last != "/" {
+          Button("Copy temporary link", systemImage: "link") {
+            Task {
+              let link: String = try await hub.send("s3/read", path + file, context: context)
+              link.copyToClipboard()
+            }
+          }
+        }
+        Button("Delete", systemImage: "trash", role: .destructive) {
+          Task { await remove(files: Array(files)) }
+        }.keyboardShortcut(.delete)
+      } primaryAction: { files in
+        if files.count == 1, let file = files.first, file.hasSuffix("/") {
+          guard !file.isEmpty else { return }
+          if file.hasPrefix("/") {
+            path = path.parentDirectory
+          } else {
+            path += file
+          }
+        }
+      }
+    }
+    func remove(files: [String]) async {
+      do {
+        for file in files {
+          try await hub.send("s3/delete", path + file, context: context)
+        }
+      } catch { print(error) }
+    }
   }
   func add(files: [URL]) {
     uploadManager.upload(files: files, directory: path, to: hub, context: context)
@@ -121,8 +177,23 @@ public struct HubFiles: View {
       for file in files {
         try await hub.send("s3/delete", path + file, context: context)
       }
-    } catch {
-      print(error)
+    } catch { print(error) }
+  }
+  struct SubtitleModifier: ViewModifier {
+    let path: String
+    private var directoryName: String {
+      String(path.dropLast(1))
+    }
+    func body(content: Content) -> some View {
+#if os(tvOS)
+      content
+#else
+      if #available(iOS 26.0, *) {
+        content.navigationSubtitle(Text(directoryName))
+      } else {
+        content
+      }
+#endif
     }
   }
   // MARK: File name view
