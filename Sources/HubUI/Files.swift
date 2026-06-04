@@ -13,7 +13,7 @@ private extension HubClient {
   static let test = HubClient(URL(string: "ws://127.0.0.1:1997")!, keyChain: KeyChain())
 }
 
-@available(macOS 14.0, iOS 17.0, *)
+@available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)
 #Preview {
   HubFiles(path: "").environmentObject(HubClient.test)
 }
@@ -181,7 +181,7 @@ public struct HubFiles: View {
       String(path.dropLast(1))
     }
     func body(content: Content) -> some View {
-#if os(tvOS)
+#if os(tvOS) || os(visionOS) || os(watchOS)
       content
 #else
       if #available(iOS 26.0, *) {
