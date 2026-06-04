@@ -27,15 +27,19 @@ extension View {
   }
 }
 
-#if !os(tvOS)
-@available(iOS 17.0, macOS 14.0, watchOS 10.0, *)
-public extension PickerStyle where Self == PalettePickerStyle {
-  static var main: PalettePickerStyle { .palette }
+#if os(watchOS)
+public extension PickerStyle where Self == DefaultPickerStyle {
+  static var main: DefaultPickerStyle { .automatic }
 }
-#else
+#elseif os(tvOS)
 @available(tvOS 17.0, *)
 public extension PickerStyle where Self == MenuPickerStyle {
   static var main: MenuPickerStyle { .menu }
+}
+#else
+@available(iOS 17.0, macOS 14.0, *)
+public extension PickerStyle where Self == PalettePickerStyle {
+  static var main: PalettePickerStyle { .palette }
 }
 #endif
 

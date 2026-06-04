@@ -100,7 +100,11 @@ extension String {
   @MainActor
   static var device: String {
     #if canImport(UIKit)
+    #if os(watchOS)
+    "Apple Watch"
+    #else
     UIDevice.current.localizedModel
+    #endif
     #elseif os(macOS)
     Host.current().localizedName ?? ProcessInfo.processInfo.hostName
     #else

@@ -34,7 +34,7 @@ public struct HubFiles: View {
     NavigationSplitView {
       SelectionList(context: $context)
     } detail: {
-#if !os(tvOS)
+#if !os(tvOS) && !os(watchOS)
       if context.service != nil {
         ListView(context: context, list: list, selected: $selected, path: $path).toolbar {
           if !path.isEmpty {
@@ -341,7 +341,8 @@ extension String {
     let pasteboard = NSPasteboard.general
     pasteboard.clearContents()
     pasteboard.setString(self, forType: .string)
-    #elseif os(iOS) || os(watchOS)
+    #elseif os(watchOS)
+    #elseif os(iOS)
     UIPasteboard.general.string = self
     #endif
   }
