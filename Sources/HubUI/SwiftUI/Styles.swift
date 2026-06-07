@@ -7,10 +7,10 @@
 
 import SwiftUI
 
-extension ShapeStyle where Self == Color {
+public extension ShapeStyle where Self == Color {
   static var hubTint: Color { Color.hubTint }
 }
-extension Color {
+public extension Color {
   static var hubTint: Color {
 #if os(visionOS)
     .white
