@@ -79,6 +79,7 @@ public struct TabButtonStyle: ButtonStyle {
       .background(.red.opacity((selected ? 0.1 : 0) + focusOffset), in: .capsule)
       .scaleEffect((up ? 1.1 : 1.0) + focusOffset)
       .animation(.spring(response: up ? 0.1 : 0.5, dampingFraction: up ? 1.0 : 0.5), value: up)
+      .animation(.spring, value: isFocused)
       .contentTransition(.numericText())
   }
   struct LabelStyle: SwiftUI.LabelStyle {
