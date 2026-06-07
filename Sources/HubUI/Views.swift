@@ -186,10 +186,10 @@ extension Element: View {
         let progress = progress(current: current)
         SwiftUI.ZStack {
           Circle().trim(from: 0, to: 1)
-            .stroke(.red.opacity(0.2), lineWidth: 3)
+            .stroke(.hubTint.opacity(0.2), lineWidth: 3)
           Circle().trim(from: 0, to: progress)
             .rotation(.degrees(-90))
-            .stroke(.red.gradient, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+            .stroke(.hubTint.gradient, style: StrokeStyle(lineWidth: 3, lineCap: .round))
             .animation(.smooth, value: progress)
         }.frame(width: 18, height: 18)
       }
@@ -522,10 +522,10 @@ struct LargeProgressView: View {
           .contentTransition(.symbolEffect)
         Circle().trim(from: 0, to: appear ? 1 : 0)
           .rotation(.degrees(-90))
-          .stroke(.red.opacity(0.2), lineWidth: 5)
+          .stroke(.hubTint.opacity(0.2), lineWidth: 5)
         Circle().trim(from: 0, to: progress)
           .rotation(.degrees(-90))
-          .stroke(.red.gradient, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+          .stroke(.hubTint.gradient, style: StrokeStyle(lineWidth: 5, lineCap: .round))
           .animation(.smooth, value: progress)
       }.frame(width: 48, height: 48)
       if running > 0 {

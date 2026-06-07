@@ -7,6 +7,19 @@
 
 import SwiftUI
 
+extension ShapeStyle where Self == Color {
+  static var hubTint: Color { Color.hubTint }
+}
+extension Color {
+  static var hubTint: Color {
+#if os(visionOS)
+    .white
+#else
+    .red
+#endif
+  }
+}
+
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 extension Text {
   func note() -> Text {
@@ -72,11 +85,11 @@ public struct TabButtonStyle: ButtonStyle {
   public func makeBody(configuration: Configuration) -> some View {
     let up = configuration.isPressed
     configuration.label.note()
-      .foregroundStyle(.red)
+      .foregroundStyle(.hubTint)
       .labelStyle(LabelStyle())
       .padding(.horizontal, 8).padding(.vertical, 4)
       .background(.black.opacity(0.001))
-      .background(.red.opacity((selected ? 0.1 : 0) + focusOffset), in: .capsule)
+      .background(.hubTint.opacity((selected ? 0.1 : 0) + focusOffset), in: .capsule)
       .scaleEffect((up ? 1.1 : 1.0) + focusOffset)
       .animation(.spring(response: up ? 0.1 : 0.5, dampingFraction: up ? 1.0 : 0.5), value: up)
       .animation(.spring, value: isFocused)
