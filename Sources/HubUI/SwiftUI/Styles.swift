@@ -63,10 +63,12 @@ public extension View {
 
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 public struct TabButtonStyle: ButtonStyle {
+  @Environment(\.isFocused) private var isFocused
   private let selected: Bool
   public init(selected: Bool) {
     self.selected = selected
   }
+  private var focusOffset: Double { isFocused ? 0.2 : 0.0 }
   public func makeBody(configuration: Configuration) -> some View {
     let up = configuration.isPressed
     configuration.label.note()
@@ -74,8 +76,8 @@ public struct TabButtonStyle: ButtonStyle {
       .labelStyle(LabelStyle())
       .padding(.horizontal, 8).padding(.vertical, 4)
       .background(.black.opacity(0.001))
-      .background(.red.opacity(selected ? 0.1 : 0), in: .capsule)
-      .scaleEffect(up ? 1.1 : 1.0)
+      .background(.red.opacity((selected ? 0.1 : 0) + focusOffset), in: .capsule)
+      .scaleEffect((up ? 1.1 : 1.0) + focusOffset)
       .animation(.spring(response: up ? 0.1 : 0.5, dampingFraction: up ? 1.0 : 0.5), value: up)
       .contentTransition(.numericText())
   }
