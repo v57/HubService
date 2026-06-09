@@ -324,7 +324,7 @@ extension Element: View {
       RoundedRectangle(cornerRadius: 16).fill(Color.gray.opacity(0.1))
         .frame(height: 80).overlay {
           SwiftUI.List(files, id: \.self) { name in
-            HubFiles.NameView(file: FileInfo(path: path + name, size: 0, lastModified: nil), path: path)
+            HubFiles.NameView(file: FileInfo(name: name, size: 0, lastModified: nil), path: path)
           }.environment(UploadManager.main).progressDraw()
           if files.isEmpty {
             SwiftUI.VStack {

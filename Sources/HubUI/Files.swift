@@ -107,7 +107,7 @@ public struct HubFiles: View {
     
     private var directories: [FileInfo] {
       uploadManager.directories(for: hub, at: path, with: list.directories, context: context)
-        .map { FileInfo(path: path + $0, size: 0, lastModified: nil) }
+        .map { FileInfo(name: $0, size: 0, lastModified: nil) }
         .sorted(using: sortOrder)
     }
     private var files: [FileInfo] {
@@ -259,27 +259,14 @@ struct FileList: Decodable {
   var directories: [String]
 }
 struct FileInfo: Identifiable, Hashable, Decodable {
-  let name: String
-  let path: String
-  let size: Int
-  let lastModified: Date?
-  
   var id: String { name }
-  let isDirectory: Bool
+  let name: String
+  var isDirectory: Bool { name.last == "/" }
   var ext: String {
     isDirectory ? "" : String(name.split { $0 == "." }.last!)
   }
-  init(path: String, size: Int, lastModified: Date?) {
-    if let last = path.split(separator: "/").last(where: { !$0.isEmpty }) {
-      self.name = String(last)
-    } else {
-      self.name = path
-    }
-    self.path = path
-    self.size = size
-    self.lastModified = lastModified
-    self.isDirectory = path.last == "/"
-  }
+  let size: Int
+  let lastModified: Date?
 }
 
 // MARK: Extensions

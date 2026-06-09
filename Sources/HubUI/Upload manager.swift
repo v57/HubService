@@ -33,14 +33,14 @@ final class UploadManager: Sendable {
   }
   // MARK: Download
   func download(file: FileInfo, from hub: HubClient, context: HubContext? = nil) async throws -> URL {
-    let link: URL = try await hub.send("s3/read", file.path, context: context)
+    let link: URL = try await hub.send("s3/read", file.name, context: context)
     let progress = ObservableProgress()
     progress.progress.total = Int64(file.size)
-    set(path: file.path, hub: hub, context: context, task: progress)
+    set(path: file.name, hub: hub, context: context, task: progress)
     defer {
       Task {
         try await Task.sleep(for: .seconds(1))
-        remove(path: file.path, hub: hub, context: context)
+        remove(path: file.name, hub: hub, context: context)
       }
     }
     let url = URL.temporaryDirectory.appending(component: UUID().uuidString, directoryHint: .notDirectory)
@@ -54,18 +54,18 @@ final class UploadManager: Sendable {
     let progresses = files.map { (file: FileInfo) -> ObservableProgress in
       let progress = ObservableProgress()
       progress.progress.total = Int64(file.size)
-      set(path: file.path, hub: hub, context: context, task: progress)
+      set(path: file.name, hub: hub, context: context, task: progress)
       return progress
     }
     defer {
       Task {
         try await Task.sleep(for: .seconds(1))
-        files.forEach { file in remove(path: file.path, hub: hub, context: context) }
+        files.forEach { file in remove(path: file.name, hub: hub, context: context) }
       }
     }
     for (file, progress) in zip(files, progresses) {
-      let link: URL = try await hub.send("s3/read", file.path, context: context)
-      let path = file.path.components(separatedBy: "/").dropFirst().joined(separator: "/")
+      let link: URL = try await hub.send("s3/read", file.name, context: context)
+      let path = file.name.components(separatedBy: "/").dropFirst().joined(separator: "/")
       let target = root.appending(path: path, directoryHint: .notDirectory)
       try? manager.createDirectory(at: target.deletingLastPathComponent(), withIntermediateDirectories: true)
       try await session.download(from: link, to: target, delegate: delegate, progress: progress)
@@ -240,7 +240,7 @@ final class UploadManager: Sendable {
     var iterator = components.makeIterator()
     tasks[scope(for: hub, context: context)]?.resolve(path: &iterator)?.files.sorted().forEach { key in
       if !set.contains(key) {
-        current.append(FileInfo(path: path + key, size: 0, lastModified: nil))
+        current.append(FileInfo(name: key, size: 0, lastModified: nil))
       }
     }
     return current
