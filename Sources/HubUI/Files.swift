@@ -132,10 +132,10 @@ public struct HubFiles: View {
         }.width(110)
       } rows: {
         ForEach(directories, id: \.self) { file in
-          TableRow(file).draggable(DirectoryTransfer(hub: hub, name: file.name, context: context))
+          TableRow(file).draggable(DirectoryTransfer(hub: hub, path: path, name: file.name, context: context))
         }
         ForEach(files) { file in
-          TableRow(file).draggable(FileInfoTransfer(hub: hub, file: file, context: context))
+          TableRow(file).draggable(FileInfoTransfer(hub: hub, path: path, file: file, context: context))
         }
       }.contextMenu(forSelectionType: String.self) { (files: Set<String>) in
         if files.count == 1, let file = files.first, file.last != "/" {

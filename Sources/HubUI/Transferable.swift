@@ -11,6 +11,7 @@ import HubService
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 struct FileInfoTransfer: Transferable {
   let hub: HubClient
+  let path: String
   let file: FileInfo
   let context: HubContext?
   static var transferRepresentation: some TransferRepresentation {
@@ -20,7 +21,7 @@ struct FileInfoTransfer: Transferable {
   }
   func download() async throws -> URL {
     do {
-      return try await UploadManager.main.download(file: file, from: hub, context: context)
+      return try await UploadManager.main.download(path: path, file: file, from: hub, context: context)
     } catch {
       print(error)
       throw error
@@ -31,6 +32,7 @@ struct FileInfoTransfer: Transferable {
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 struct DirectoryTransfer: Transferable {
   let hub: HubClient
+  let path: String
   let name: String
   let context: HubContext?
   static var transferRepresentation: some TransferRepresentation {
@@ -40,7 +42,7 @@ struct DirectoryTransfer: Transferable {
   }
   func download() async throws -> URL {
     do {
-      return try await UploadManager.main.download(directory: name, from: hub, context: context)
+      return try await UploadManager.main.download(path: path, directory: name, from: hub, context: context)
     } catch {
       print(error)
       throw error

@@ -32,35 +32,37 @@ final class UploadManager: Sendable {
     Path(hub: hub.id, service: context?.service)
   }
   // MARK: Download
-  func download(file: FileInfo, from hub: HubClient, context: HubContext? = nil) async throws -> URL {
-    let link: URL = try await hub.send("s3/read", file.name, context: context)
+  func download(path: String, file: FileInfo, from hub: HubClient, context: HubContext? = nil) async throws -> URL {
+    let path = path + file.name
+    let link: URL = try await hub.send("s3/read", path, context: context)
     let progress = ObservableProgress()
     progress.progress.total = Int64(file.size)
-    set(path: file.name, hub: hub, context: context, task: progress)
+    set(path: path, hub: hub, context: context, task: progress)
     defer {
       Task {
         try await Task.sleep(for: .seconds(1))
-        remove(path: file.name, hub: hub, context: context)
+        remove(path: path, hub: hub, context: context)
       }
     }
     let url = URL.temporaryDirectory.appending(component: UUID().uuidString, directoryHint: .notDirectory)
     try await session.download(from: link, to: url, delegate: delegate, progress: progress)
     return url
   }
-  func download(directory name: String, from hub: HubClient, context: HubContext? = nil) async throws -> URL {
+  func download(path: String, directory name: String, from hub: HubClient, context: HubContext? = nil) async throws -> URL {
     let manager = FileManager.default
-    let files: [FileInfo] = try await hub.send("s3/read/directory", name, context: context)
+    let path = path + name
+    let files: [FileInfo] = try await hub.send("s3/read/directory", path, context: context)
     let root = URL.temporaryDirectory.appending(component: UUID().uuidString, directoryHint: .isDirectory)
     let progresses = files.map { (file: FileInfo) -> ObservableProgress in
       let progress = ObservableProgress()
       progress.progress.total = Int64(file.size)
-      set(path: file.name, hub: hub, context: context, task: progress)
+      set(path: path + file.name, hub: hub, context: context, task: progress)
       return progress
     }
     defer {
       Task {
         try await Task.sleep(for: .seconds(1))
-        files.forEach { file in remove(path: file.name, hub: hub, context: context) }
+        files.forEach { file in remove(path: path + file.name, hub: hub, context: context) }
       }
     }
     for (file, progress) in zip(files, progresses) {
