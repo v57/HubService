@@ -83,6 +83,9 @@ public struct HubFiles: View {
             Label(provider.name ?? "Storage", systemImage: "externaldrive")
           }
         }
+      }.task(id: context.service == nil && !providers.isEmpty) {
+        guard context.service == nil && !providers.isEmpty else { return }
+        context.service = providers.first?.id
       }
     }
   }
