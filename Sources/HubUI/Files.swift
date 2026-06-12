@@ -84,8 +84,10 @@ public struct HubFiles: View {
           }
         }
       }.task(id: context.service == nil && !providers.isEmpty) {
+#if !os(iOS)
         guard context.service == nil && !providers.isEmpty else { return }
         context.service = providers.first?.id
+#endif
       }
     }
   }
