@@ -7,6 +7,14 @@
 
 import SwiftUI
 
+var interfaceScale: Double {
+#if os(tvOS)
+  2
+#else
+  1
+#endif
+}
+
 public extension ShapeStyle where Self == Color {
   static var hubTint: Color { Color.hubTint }
 }
@@ -23,7 +31,7 @@ public extension Color {
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 extension Text {
   func note() -> Text {
-    font(.system(size: 12, weight: .medium, design: .rounded))
+    font(.system(size: 12 * interfaceScale, weight: .medium, design: .rounded))
   }
   func secondary() -> Text {
     note().foregroundStyle(.secondary)
@@ -33,7 +41,7 @@ extension Text {
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 extension View {
   func note() -> some View {
-    font(.system(size: 12, weight: .medium, design: .rounded))
+    font(.system(size: 12 * interfaceScale, weight: .medium, design: .rounded))
   }
   func secondary() -> some View {
     note().foregroundStyle(.secondary)
@@ -87,7 +95,7 @@ public struct TabButtonStyle: ButtonStyle {
     configuration.label.note()
       .foregroundStyle(.hubTint)
       .labelStyle(LabelStyle())
-      .padding(.horizontal, 8).padding(.vertical, 4)
+      .padding(.horizontal, 8 * interfaceScale).padding(.vertical, 4 * interfaceScale)
       .background(.black.opacity(0.001))
       .background(.hubTint.opacity((selected ? 0.1 : 0) + focusOffset), in: .capsule)
       .scaleEffect((up ? 1.1 : 1.0) + focusOffset)
@@ -97,7 +105,7 @@ public struct TabButtonStyle: ButtonStyle {
   }
   struct LabelStyle: SwiftUI.LabelStyle {
     func makeBody(configuration: Configuration) -> some View {
-      HStack(spacing: 4) {
+      HStack(spacing: 4 * interfaceScale) {
         configuration.icon.frame(height: 0).contentTransition(.symbolEffect)
         configuration.title
       }
