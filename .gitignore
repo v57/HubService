@@ -1,3 +1,6 @@
 .build/
 .swiftpm/
 .DS_Store
+
+# hub-pro ed25519 keychain (never commit private keys)
+/auth
