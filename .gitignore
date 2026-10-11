@@ -4,3 +4,5 @@
 
 # hub-pro ed25519 keychain (never commit private keys)
 /auth
+CLAUDE.md
+/.claude
