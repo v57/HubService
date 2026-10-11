@@ -224,8 +224,8 @@ public extension KeyedDecodingContainer {
 
 @usableFromInline
 enum DecodingWarnings {
-  @usableFromInline
-  @TaskLocal static var counter: Counter?
+  // Same line: Swift 6.4 @TaskLocal expansion glues attributes on separate lines into "usableFromInlinenonisolated".
+  @usableFromInline @TaskLocal static var counter: Counter?
   
   @usableFromInline
   final class Counter: @unchecked Sendable {
