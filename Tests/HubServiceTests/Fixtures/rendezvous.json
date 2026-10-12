@@ -1,0 +1,35 @@
+{
+  "ticket": {
+    "version": 1,
+    "ticketId": "ticket-1",
+    "hubKey": "hub-key",
+    "hubNetworkId": "018f0f67-89ab-7def-8123-456789abcdef",
+    "key": "profile-key",
+    "nodeId": "node-1",
+    "roles": ["rendezvous"],
+    "sessionPurpose": "peer-connect",
+    "issuedAt": "2026-07-25T00:00:00.000Z",
+    "expiresAt": "2026-07-25T00:01:00.000Z",
+    "signature": "c2lnbmF0dXJl"
+  },
+  "candidate": {
+    "version": 1,
+    "candidateId": "candidate-1",
+    "sessionId": "opaque-session-1",
+    "key": "agent-key",
+    "kind": "server-reflexive",
+    "transport": "udp",
+    "address": "203.0.113.10",
+    "port": 51820,
+    "priority": 100,
+    "foundation": "srflx-1",
+    "expiresAt": "2026-07-25T00:00:30.000Z"
+  },
+  "observedEndpoint": {
+    "version": 1,
+    "key": "agent-key",
+    "transport": "udp",
+    "address": "203.0.113.10",
+    "port": 51820
+  }
+}

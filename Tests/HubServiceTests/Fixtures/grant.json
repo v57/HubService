@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "grantId": "grant-1",
+  "hubKey": "hub-key",
+  "hubNetworkId": "018f0f67-89ab-7def-8123-456789abcdef",
+  "callerKey": "caller-profile-key",
+  "callerWireGuardKey": "caller-wg-key",
+  "callerAddress": "100.96.0.3",
+  "targetKey": "target-agent-key",
+  "targetWireGuardKey": "target-wg-key",
+  "resourceId": "hnr1_vu5lgvuep3ijwvktdc3c7jtlkbq7tpio",
+  "providerId": "provider-1",
+  "protocol": "tcp",
+  "destinationAddress": "100.96.0.2",
+  "destinationPort": 9001,
+  "generation": 4,
+  "issuedAt": "2026-07-25T00:00:00.000Z",
+  "expiresAt": "2026-07-25T00:01:00.000Z",
+  "signature": "c2lnbmF0dXJl"
+}

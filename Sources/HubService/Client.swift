@@ -34,8 +34,10 @@ public class HubClient: @MainActor Identifiable {
     profile = Profile(name: .device, icon: .device)
     guard connect else { return }
     if let keyChain {
+      let serviceKey = keyChain.publicKey()
+      service.network.configureIdentity(keyChain)
       sender = channel.connect(url, options: ClientOptions(headers: {
-        let key = keyChain.publicKey()
+        let key = serviceKey
         let time = "\(Int(Date().timeIntervalSince1970 + 60))"
         let sign = keyChain.sign(text: time)
         return ["auth": "key.\(key).\(sign).\(time)"]
@@ -43,6 +45,7 @@ public class HubClient: @MainActor Identifiable {
         guard let self else { return }
         try? await sender.send("hub/profile/update", profile)
         try await service.sendServiceUpdates(first: true)
+        try await service.network.didConnect(sender)
       }))
     } else {
       sender = channel.connect(url)
@@ -103,6 +106,35 @@ public class HubClient: @MainActor Identifiable {
   public func values<Body: Encodable, Context: Encodable & Sendable, Output: Decodable>(_ path: String, _ body: Body?, context: Context?) -> Values<Void, Body, Context, Output> {
     sender.values(path, body, options: SendOptions(context: context))
   }
+  /// Reads one stream value and releases its iterator immediately, causing
+  /// Channel to cancel the remote stream instead of leaving a subscription.
+  public func oneValue<Output: Decodable & Sendable>(
+    _ path: String,
+    as type: Output.Type = Output.self
+  ) async throws -> Output {
+    var iterator: ValuesIterator<Void, EmptyCodable, EmptyCodable, Output>? =
+      values(path).makeAsyncIterator()
+    guard let value = try await iterator?.next() else {
+      throw HubClientStreamError.finishedWithoutValue(path)
+    }
+    iterator = nil
+    return value
+  }
+
+  /// Body-bearing variant used by one-value bootstrap and lookup streams.
+  public func oneValue<Body: Encodable & Sendable, Output: Decodable & Sendable>(
+    _ path: String,
+    _ body: Body?,
+    as type: Output.Type = Output.self
+  ) async throws -> Output {
+    var iterator: ValuesIterator<Void, Body, EmptyCodable, Output>? =
+      values(path, body).makeAsyncIterator()
+    guard let value = try await iterator?.next() else {
+      throw HubClientStreamError.finishedWithoutValue(path)
+    }
+    iterator = nil
+    return value
+  }
   public func stop() {
     sender.stop()
   }
@@ -112,3 +144,6 @@ public class HubClient: @MainActor Identifiable {
   }
 }
 
+public enum HubClientStreamError: Error, Equatable, Sendable {
+  case finishedWithoutValue(String)
+}

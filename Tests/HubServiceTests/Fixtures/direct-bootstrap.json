@@ -1,0 +1,40 @@
+{
+  "request": {
+    "version": 1,
+    "signatureDomain": "hub-network/direct-bootstrap-request/v1",
+    "replayId": "replay-1",
+    "joinerServiceKey": "joiner-service-key",
+    "joinerWireGuardKey": "joiner-wg-key",
+    "nonce": "nonce-1",
+    "issuedAt": "2026-07-25T00:00:00.000Z",
+    "signature": "c2lnbmF0dXJl"
+  },
+  "response": {
+    "version": 1,
+    "signatureDomain": "hub-network/direct-bootstrap-response/v1",
+    "replayId": "replay-1",
+    "inviterServiceKey": "inviter-service-key",
+    "joinerServiceKey": "joiner-service-key",
+    "joinerWireGuardKey": "joiner-wg-key",
+    "inviterWireGuardKey": "inviter-wg-key",
+    "endpoints": [
+      {
+        "address": "203.0.113.10",
+        "port": 51820,
+        "transport": "udp"
+      }
+    ],
+    "joinerAddress": {
+      "ipv4": "100.127.255.254",
+      "ipv6": "fd48:5542:4e45:ffff::fffe"
+    },
+    "inviterAddress": {
+      "ipv4": "100.127.255.253",
+      "ipv6": "fd48:5542:4e45:ffff::fffd"
+    },
+    "hubProHost": "100.96.0.1",
+    "issuedAt": "2026-07-25T00:00:00.000Z",
+    "expiresAt": "2026-07-25T00:05:00.000Z",
+    "signature": "c2lnbmF0dXJl"
+  }
+}
