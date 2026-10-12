@@ -1012,7 +1012,7 @@ public enum HubNetworkDirectBootstrapDomain {
 
 /// A direct WireGuard endpoint advertised by an inviter for the temporary
 /// bootstrap link.
-public struct BootstrapEndpoint: Codable, Equatable, Sendable {
+public struct BootstrapEndpoint: Codable, Hashable, Sendable {
   public let address: String
   public let port: UInt16
   public let transport: String
@@ -1026,7 +1026,7 @@ public struct BootstrapEndpoint: Codable, Equatable, Sendable {
 
 /// Temporary point-to-point address pair assigned for the bootstrap link,
 /// distinct from the permanent overlay addresses hub-pro assigns after bind.
-public struct BootstrapAddress: Codable, Equatable, Sendable {
+public struct BootstrapAddress: Codable, Hashable, Sendable {
   public let ipv4: String
   public let ipv6: String
 
@@ -1076,7 +1076,7 @@ public struct DirectBootstrapRequest: Codable, Equatable, Sendable {
 /// joiner needs to reach hub-pro through the inviter. Once the joiner
 /// completes `hub/net/bind` it receives permanent overlay addresses and must
 /// drop this temporary tunnel.
-public struct DirectBootstrapResponse: Codable, Equatable, Sendable {
+public struct DirectBootstrapResponse: Codable, Hashable, Sendable {
   public let version: Int
   public let signatureDomain: String
   public let replayId: String
