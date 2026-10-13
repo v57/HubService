@@ -7,6 +7,10 @@
 
 import HubService
 import Foundation
+import Observation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 @Observable @MainActor

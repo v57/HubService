@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "type": "shares.replace",
+  "requestId": "req-1",
+  "payload": {
+    "shares": [
+      {
+        "version": 1,
+        "name": "s3",
+        "protocol": "tcp",
+        "target": {
+          "host": "127.0.0.1",
+          "port": 9001
+        },
+        "policy": {
+          "mode": "group",
+          "group": "editors"
+        },
+        "attestation": {
+          "version": 1,
+          "attestationId": "att-1",
+          "serviceKey": "service-key",
+          "key": "agent-key",
+          "shareName": "s3",
+          "protocol": "tcp",
+          "target": {
+            "host": "127.0.0.1",
+            "port": 9001
+          },
+          "issuedAt": "2026-07-25T00:00:00.000Z",
+          "expiresAt": "2026-07-25T00:05:00.000Z",
+          "signature": "c2lnbmF0dXJl"
+        }
+      }
+    ]
+  }
+}

@@ -7,6 +7,7 @@
 
 import Foundation
 import HubService
+import Observation
 
 struct InterfaceData {
   var string: [String: String]

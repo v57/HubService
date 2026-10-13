@@ -1,0 +1,54 @@
+{
+  "code": "eyJleHBpcmVzQXQiOiIyMDI2LTA3LTI5VDAwOjEwOjAwLjAwMFoiLCJodWJLZXkiOiJNQ293QlFZREsyVndBeUVBQTZFSHYvUE9FTDRkY04wWTUwdkFtV2ZrMWpDYnBRMWZIZHlHWkJKVk1iZz0iLCJodWJQcm9Ib3N0IjoiMTAwLjk2LjAuMSIsImludml0aW5nQWdlbnRBZGRyZXNzIjoiMTAwLjk2LjAuMiIsImludml0aW5nS2V5IjoiTUNvd0JRWURLMlZ3QXlFQUVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkU9IiwiaXNzdWVkQXQiOiIyMDI2LTA3LTI5VDAwOjAwOjAwLjAwMFoiLCJzY29wZXMiOlt7ImFjdGlvbnMiOlsiYm9vdHN0cmFwLXJlbmRlenZvdXMiXSwiYXVkaWVuY2UiOiJub2RlIn0seyJhY3Rpb25zIjpbImJvb3RzdHJhcC1wZWVyIl0sImF1ZGllbmNlIjoiaW52aXRpbmctYWdlbnQifSx7ImFjdGlvbnMiOlsiYm9vdHN0cmFwLXBlZXIiLCJlbnJvbGwtcHJvZmlsZSIsInJlYWQtaHViLWhlYWRlciJdLCJhdWRpZW5jZSI6ImpvaW5lciJ9LHsiYWN0aW9ucyI6WyJlbnJvbGwtcHJvZmlsZSJdLCJhdWRpZW5jZSI6Imh1Yi1wcm8ifV0sInNpZ25hdHVyZSI6InkzZm4wSTdPb1RqY2NkT1pINUtwMUxzV3lILzVyTEFubjMrZjBNNDBFRUF0a0JJT0VvaGlUNS9NdU42MUNrSG00eVkzRGdoZ3JuU0YzTks1bnIxcURBPT0iLCJzaWduYXR1cmVEb21haW4iOiJodWItbmV0d29yay9pbnZpdGF0aW9uL3YxIiwidG9rZW5JZCI6Il9fNzlfUHY2LWZqMzl2WDA4X0x4OE9fdTdlenI2dW5vNS1ibDVPUGk0ZUEiLCJ2ZXJzaW9uIjoxfQ",
+  "envelope": {
+    "version": 1,
+    "signatureDomain": "hub-network/invitation/v1",
+    "tokenId": "__79_Pv6-fj39vX08_Lx8O_u7ezr6uno5-bl5OPi4eA",
+    "issuedAt": "2026-07-29T00:00:00.000Z",
+    "expiresAt": "2026-07-29T00:10:00.000Z",
+    "hubKey": "MCowBQYDK2VwAyEAA6EHv/POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg=",
+    "invitingKey": "MCowBQYDK2VwAyEAERERERERERERERERERERERERERERERERERERERERERE=",
+    "invitingAgentAddress": "100.96.0.2",
+    "hubProHost": "100.96.0.1",
+    "scopes": [
+      {
+        "audience": "node",
+        "actions": [
+          "bootstrap-rendezvous"
+        ]
+      },
+      {
+        "audience": "inviting-agent",
+        "actions": [
+          "bootstrap-peer"
+        ]
+      },
+      {
+        "audience": "joiner",
+        "actions": [
+          "bootstrap-peer",
+          "enroll-profile",
+          "read-hub-header"
+        ]
+      },
+      {
+        "audience": "hub-pro",
+        "actions": [
+          "enroll-profile"
+        ]
+      }
+    ],
+    "signature": "y3fn0I7OoTjccdOZH5Kp1LsWyH/5rLAnn3+f0M40EEAtkBIOEohiT5/MuN61CkHm4yY3DghgrnSF3NK5nr1qDA=="
+  },
+  "fields": {
+    "expiresAt": "2026-07-29T00:10:00.000Z",
+    "hubKey": "MCowBQYDK2VwAyEAA6EHv/POEL4dcN0Y50vAmWfk1jCbpQ1fHdyGZBJVMbg=",
+    "hubProHost": "100.96.0.1",
+    "invitingAgentAddress": "100.96.0.2",
+    "invitingKey": "MCowBQYDK2VwAyEAERERERERERERERERERERERERERERERERERERERERERE=",
+    "issuedAt": "2026-07-29T00:00:00.000Z",
+    "tokenId": "__79_Pv6-fj39vX08_Lx8O_u7ezr6uno5-bl5OPi4eA"
+  },
+  "seed": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+  "url": "hub://net/join/eyJleHBpcmVzQXQiOiIyMDI2LTA3LTI5VDAwOjEwOjAwLjAwMFoiLCJodWJLZXkiOiJNQ293QlFZREsyVndBeUVBQTZFSHYvUE9FTDRkY04wWTUwdkFtV2ZrMWpDYnBRMWZIZHlHWkJKVk1iZz0iLCJodWJQcm9Ib3N0IjoiMTAwLjk2LjAuMSIsImludml0aW5nQWdlbnRBZGRyZXNzIjoiMTAwLjk2LjAuMiIsImludml0aW5nS2V5IjoiTUNvd0JRWURLMlZ3QXlFQUVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkVSRVJFUkU9IiwiaXNzdWVkQXQiOiIyMDI2LTA3LTI5VDAwOjAwOjAwLjAwMFoiLCJzY29wZXMiOlt7ImFjdGlvbnMiOlsiYm9vdHN0cmFwLXJlbmRlenZvdXMiXSwiYXVkaWVuY2UiOiJub2RlIn0seyJhY3Rpb25zIjpbImJvb3RzdHJhcC1wZWVyIl0sImF1ZGllbmNlIjoiaW52aXRpbmctYWdlbnQifSx7ImFjdGlvbnMiOlsiYm9vdHN0cmFwLXBlZXIiLCJlbnJvbGwtcHJvZmlsZSIsInJlYWQtaHViLWhlYWRlciJdLCJhdWRpZW5jZSI6ImpvaW5lciJ9LHsiYWN0aW9ucyI6WyJlbnJvbGwtcHJvZmlsZSJdLCJhdWRpZW5jZSI6Imh1Yi1wcm8ifV0sInNpZ25hdHVyZSI6InkzZm4wSTdPb1RqY2NkT1pINUtwMUxzV3lILzVyTEFubjMrZjBNNDBFRUF0a0JJT0VvaGlUNS9NdU42MUNrSG00eVkzRGdoZ3JuU0YzTks1bnIxcURBPT0iLCJzaWduYXR1cmVEb21haW4iOiJodWItbmV0d29yay9pbnZpdGF0aW9uL3YxIiwidG9rZW5JZCI6Il9fNzlfUHY2LWZqMzl2WDA4X0x4OE9fdTdlenI2dW5vNS1ibDVPUGk0ZUEiLCJ2ZXJzaW9uIjoxfQ"
+}

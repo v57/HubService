@@ -12,6 +12,7 @@ import Channel
 public class HubService {
   let channel: Channel<Void>
   var sender: ClientSender<Void>?
+  public let network = HubNetworkService()
   var apps = [AppHeader]()
   var api: [String] {
     Array(Set(channel.postApi.keys).union(channel.streamApi.keys))
@@ -80,7 +81,7 @@ public class HubService {
       }
     }
     let apps = apps.filter { !disabledApps.contains($0.path) }
-    let update = HubService.Update(services: api.map { ServiceHeader(path: $0, limit: options[$0]?.limit) }, apps: apps)
+    let update = HubService.Update(services: api.map { ServiceHeader(path: $0, options: options[$0]) }, apps: apps)
     if !first || !update.isEmpty {
       try await sender.send("hub/service/update", update)
     }
@@ -102,9 +103,16 @@ public class HubService {
   }
   public struct Options: Hashable {
     public var limit: Int?
-    public init(limit: Int? = nil) {
+    public var permissions: Permissions?
+    public init(limit: Int? = nil, permissions: Permissions? = nil) {
       self.limit = limit
+      self.permissions = permissions
     }
+  }
+  public struct Permissions: Hashable, Encodable, Sendable {
+    public let group: String
+    public let name: String
+    public init(group: String, name: String) { self.group = group; self.name = name }
   }
   
   @MainActor
@@ -187,8 +195,10 @@ public struct AppHeader: Identifiable, Hashable, Codable, Sendable {
 struct ServiceHeader: Encodable, Sendable {
   let path: String
   let limit: Int?
-  init(path: String, limit: Int?) {
+  let permissions: HubService.Permissions?
+  init(path: String, options: HubService.Options?) {
     self.path = path
-    self.limit = limit
+    self.limit = options?.limit
+    self.permissions = options?.permissions
   }
 }

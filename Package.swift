@@ -13,6 +13,12 @@ let package = Package(
   targets: [
     .target(name: "HubService", dependencies: [.product(name: "Channel", package: "ChannelSwift")]),
     .target(name: "HubUI", dependencies: ["HubService", .product(name: "Channel", package: "ChannelSwift")]),
+    .testTarget(
+      name: "HubServiceTests",
+      dependencies: ["HubService"],
+      exclude: ["HubNetworkWireCompatibility.md"],
+      resources: [.copy("Fixtures")]
+    ),
   ]
 )
 #else // Linux/Windows/Android
@@ -33,6 +39,15 @@ let package = Package(
       .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux, .windows, .android])),
     ]),
     .target(name: "HubUI", dependencies: ["HubService", .product(name: "Channel", package: "ChannelSwift")]),
+    .testTarget(
+      name: "HubServiceTests",
+      dependencies: [
+        "HubService",
+        .product(name: "Crypto", package: "swift-crypto", condition: .when(platforms: [.linux, .windows, .android])),
+      ],
+      exclude: ["HubNetworkWireCompatibility.md"],
+      resources: [.copy("Fixtures")]
+    ),
   ]
 )
 

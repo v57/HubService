@@ -1,0 +1,67 @@
+{
+  "capability": {
+    "version": 1,
+    "capability": "internet-gateway-v1",
+    "ipv4": true,
+    "ipv6": true,
+    "dns": true,
+    "metered": false,
+    "updatedAt": "2026-07-29T00:00:00.000Z"
+  },
+  "status": {
+    "version": 1,
+    "hubNetworkId": "018f0f67-89ab-7def-8123-456789abcdef",
+    "key": "gateway-profile-key",
+    "wireGuardKey": "gateway-wg-key",
+    "endpoint": "198.51.100.1:51820",
+    "capability": {
+      "version": 1,
+      "capability": "internet-gateway-v1",
+      "ipv4": true,
+      "ipv6": true,
+      "dns": true,
+      "metered": false,
+      "updatedAt": "2026-07-29T00:00:00.000Z"
+    },
+    "state": "available",
+    "updatedAt": "2026-07-29T00:00:01.000Z"
+  },
+  "grant": {
+    "version": 1,
+    "grantId": "gateway-grant-1",
+    "hubKey": "hub-key",
+    "hubNetworkId": "018f0f67-89ab-7def-8123-456789abcdef",
+    "clientKey": "client-profile-key",
+    "clientWireGuardKey": "client-wg-key",
+    "gatewayKey": "gateway-profile-key",
+    "gatewayWireGuardKey": "gateway-wg-key",
+    "ipv4": true,
+    "ipv6": true,
+    "dns": true,
+    "generation": 7,
+    "issuedAt": "2026-07-29T00:00:00.000Z",
+    "expiresAt": "2026-07-29T00:05:00.000Z",
+    "signature": "c2lnbmF0dXJl"
+  },
+  "revocation": {
+    "version": 1,
+    "hubNetworkId": "018f0f67-89ab-7def-8123-456789abcdef",
+    "gatewayKey": "gateway-profile-key",
+    "generation": 8,
+    "revokedAt": "2026-07-29T00:06:00.000Z",
+    "reason": "provider_disabled"
+  },
+  "diagnostic": {
+    "version": 1,
+    "hubNetworkId": "018f0f67-89ab-7def-8123-456789abcdef",
+    "gatewayKey": "gateway-profile-key",
+    "code": "gateway_unavailable",
+    "message": "Gateway handshake timed out",
+    "retryable": true,
+    "updatedAt": "2026-07-29T00:06:01.000Z",
+    "details": {
+      "attempt": 2,
+      "dns": true
+    }
+  }
+}

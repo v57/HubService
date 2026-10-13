@@ -5,12 +5,15 @@
 //  Created by Dmitry Kozlov on 6/7/25.
 //
 
+import Foundation
+#if canImport(Observation)
+import Observation
+#endif
 #if canImport(SwiftCrossUI)
 import SwiftCrossUI
 #else
 import SwiftUI
 #endif
-import Combine
 import HubService
 
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
@@ -23,7 +26,7 @@ public struct HubAppView: View {
     self.header = header
   }
   public var body: some View {
-    Content().toolbar {
+    Content().safeAreaInset(edge: .bottom) {
       ServiceProvider.Picker(path: header.path, context: $context)
     }.syncProviders(path: header.path)
     .navigationTitle(app.app.header?.name ?? header.name)

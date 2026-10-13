@@ -9,7 +9,8 @@ CLAUDE.md
 
 # macOS
 # Finder folder icon: a file named Icon plus a carriage return
-Icon[]
+Icon[
+]
 
 # Build
 build/

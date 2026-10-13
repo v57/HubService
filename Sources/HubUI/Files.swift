@@ -10,11 +10,17 @@ import SwiftCrossUI
 #else
 import SwiftUI
 #endif
-import UniformTypeIdentifiers
+import Foundation
 import HubService
 
 private extension HubClient {
-  static let test = HubClient(URL(string: "ws://127.0.0.1:1997")!, keyChain: .documents)
+  static let test: HubClient = {
+    if #available(macOS 13.0, iOS 16.0, tvOS 16.0, watchOS 9.0, *) {
+      return HubClient(URL(string: "ws://127.0.0.1:1997")!, keyChain: .home)
+    } else {
+      return HubClient(URL(string: "ws://127.0.0.1:1997")!, keyChain: .documents)
+    }
+  }()
 }
 
 @available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)
@@ -108,7 +114,7 @@ public struct HubFiles: View {
     @Binding var path: String
     @State private var uploadManager = UploadManager.main
     @State private var sortOrder = [
-      KeyPathComparator(\FileInfo.name, comparator: .localized)
+      KeyPathComparator(\FileInfo.name)
     ]
     
     private var directories: [FileInfo] {
