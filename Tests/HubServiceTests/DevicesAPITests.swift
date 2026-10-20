@@ -9,6 +9,7 @@ struct DevicesAPITests {
     let json = #"""
     [{"id":"8cef065b7af83669150b7d32704d3d3e","key":"K","name":"Mac Studio","platform":"macos","os":"27.0",
       "arch":"arm64","approved":true,"revoked":false,"online":true,"network":"offline",
+      "overlay":{"address":"100.96.0.7","authority":"mac-studio-abcdefghijklmnop.v1-hub.hub.invalid"},
       "lastSeen":"2026-10-20T10:00:00.000Z","capabilities":{"cpu":{"cores":24,"model":"M3 Ultra"},
       "memory":68719476736,"disks":[{"name":"Backup Disk","free":1200000000000}],"power":"ac",
       "tools":{"xcode":"27.0","docker":true,"other":1},"custom":{"a":1}},
@@ -20,6 +21,7 @@ struct DevicesAPITests {
     let mac = devices[0]
     #expect(mac.name == "Mac Studio" && mac.approved && mac.online && mac.network == .offline)
     #expect(mac.lastSeen != nil)
+    #expect(mac.overlay?.address == "100.96.0.7")
     #expect(mac.capabilities?.cpu?.cores == 24)
     #expect(mac.capabilities?.disks?.first?.free == 1_200_000_000_000)
     #expect(mac.capabilities?.tools?.docker == true)
@@ -69,6 +71,15 @@ struct DevicesAPITests {
     #expect(!HubService.Update(services: [], apps: [], reporter: true).isEmpty)
     let plain = ServiceHeader(path: "x", options: nil)
     #expect(String(decoding: try encoder.encode(plain), as: UTF8.self) == #"{"path":"x"}"#)
+  }
+
+  @Test("agent profiles name their member and device")
+  func agentProfile() throws {
+    let json = #"{"version":1,"key":"S","wireGuardKey":"W","overlayAddresses":["100.96.0.7"],"connectedAt":"t","member":"device:d","device":"d","deviceAuthority":"mac-x.v1-h.hub.invalid"}"#
+    let profile = try JSONDecoder().decode(AgentProfile.self, from: Data(json.utf8))
+    #expect(profile.member == "device:d" && profile.device == "d" && profile.deviceAuthority == "mac-x.v1-h.hub.invalid")
+    let legacy = try JSONDecoder().decode(AgentProfile.self, from: Data(#"{"version":1,"key":"S","wireGuardKey":"W","overlayAddresses":[],"connectedAt":"t"}"#.utf8))
+    #expect(legacy.member == nil && legacy.device == nil)
   }
 
   @Test("ssh host keys are signed by the device")

@@ -918,6 +918,12 @@ public struct AgentProfile: Codable, Equatable, Sendable {
   public let platform: String?
   public let overlayAddresses: [String]
   public let connectedAt: String
+  /// Member key: `device:<id>` for a device-attached agent, else the service key
+  public let member: String?
+  /// Device id when the agent is device-attached
+  public let device: String?
+  /// `<label>-<16>.v1-<hub>.hub.invalid`, resolving to the device's overlay address
+  public let deviceAuthority: String?
 
   public init(
     version: Int = hubNetworkWireVersion,
@@ -927,7 +933,10 @@ public struct AgentProfile: Codable, Equatable, Sendable {
     name: String? = nil,
     platform: String? = nil,
     overlayAddresses: [String],
-    connectedAt: String
+    connectedAt: String,
+    member: String? = nil,
+    device: String? = nil,
+    deviceAuthority: String? = nil
   ) {
     self.version = version
     self.key = key
@@ -936,6 +945,9 @@ public struct AgentProfile: Codable, Equatable, Sendable {
     self.platform = platform
     self.overlayAddresses = overlayAddresses
     self.connectedAt = connectedAt
+    self.member = member
+    self.device = device
+    self.deviceAuthority = deviceAuthority
   }
 }
 

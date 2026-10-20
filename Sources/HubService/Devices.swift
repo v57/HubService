@@ -20,6 +20,12 @@ public struct Device: Codable, Hashable, Identifiable, Sendable {
   public enum NetworkState: String, Codable, Hashable, Sendable {
     case online, offline
   }
+  /// The device's Hub Network address and DNS name, shared by every service on it
+  public struct Overlay: Codable, Hashable, Sendable {
+    public var address: String
+    /// `<label>-<16>.v1-<hub>.hub.invalid`
+    public var authority: String
+  }
   public var id: String
   public var key: String
   public var name: String
@@ -31,12 +37,13 @@ public struct Device: Codable, Hashable, Identifiable, Sendable {
   public var revoked: Bool
   public var online: Bool
   public var network: NetworkState?
+  public var overlay: Overlay?
   public var lastSeen: Date?
   public var capabilities: Capabilities?
   public var services: [Service]
 
   enum CodingKeys: String, CodingKey {
-    case id, key, name, platform, os, arch, parent, approved, revoked, online, network, lastSeen, capabilities, services
+    case id, key, name, platform, os, arch, parent, approved, revoked, online, network, overlay, lastSeen, capabilities, services
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -51,6 +58,7 @@ public struct Device: Codable, Hashable, Identifiable, Sendable {
     revoked = try container.decodeIfPresent(Bool.self, forKey: .revoked) ?? false
     online = try container.decodeIfPresent(Bool.self, forKey: .online) ?? false
     network = try? container.decodeIfPresent(NetworkState.self, forKey: .network)
+    overlay = try? container.decodeIfPresent(Overlay.self, forKey: .overlay)
     lastSeen = (try? container.decodeIfPresent(String.self, forKey: .lastSeen)).flatMap(Self.date)
     capabilities = try? container.decodeIfPresent(Capabilities.self, forKey: .capabilities)
     services = (try? container.decodeIfPresent([Service].self, forKey: .services)) ?? []
@@ -68,6 +76,7 @@ public struct Device: Codable, Hashable, Identifiable, Sendable {
     try container.encode(revoked, forKey: .revoked)
     try container.encode(online, forKey: .online)
     try container.encodeIfPresent(network, forKey: .network)
+    try container.encodeIfPresent(overlay, forKey: .overlay)
     try container.encodeIfPresent(lastSeen.map(ISO8601DateFormatter.hubNetworkDateString), forKey: .lastSeen)
     try container.encodeIfPresent(capabilities, forKey: .capabilities)
     try container.encode(services, forKey: .services)
