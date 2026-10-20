@@ -1,0 +1,65 @@
+{
+  "description": "Hub device layer test vectors (Docs/Devices/protocol.md). Ed25519 signatures are deterministic, so every SDK must reproduce these strings exactly.",
+  "keys": {
+    "hub": {
+      "seed": "0101010101010101010101010101010101010101010101010101010101010101",
+      "keyFile": "MC4CAQAwBQYDK2VwBCIEIAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBMCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=",
+      "publicKey": "MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+    },
+    "service": {
+      "seed": "0202020202020202020202020202020202020202020202020202020202020202",
+      "keyFile": "MC4CAQAwBQYDK2VwBCIEIAICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICMCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=",
+      "publicKey": "MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q="
+    },
+    "device": {
+      "seed": "0303030303030303030303030303030303030303030303030303030303030303",
+      "keyFile": "MC4CAQAwBQYDK2VwBCIEIAMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDMCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=",
+      "publicKey": "MCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=",
+      "deviceId": "8cef065b7af83669150b7d32704d3d3e",
+      "safetyCode": "474 971"
+    }
+  },
+  "auth": {
+    "expiry": 1792500300,
+    "v0": {
+      "signedData": "1792500300",
+      "signature": "anPyS0SzpWRDUpXrtnu9LXdFIAT5c5Uj6bIHy6X6XLQxhgbWhCtSFqxUUH/ERAozMkNpYAxxCfJNng8XJEkUCg==",
+      "header": "key.MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=.anPyS0SzpWRDUpXrtnu9LXdFIAT5c5Uj6bIHy6X6XLQxhgbWhCtSFqxUUH/ERAozMkNpYAxxCfJNng8XJEkUCg==.1792500300"
+    },
+    "v1": {
+      "signedData": "hub1:MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=:1792500300",
+      "signature": "dAdbJoMplPHWWh+UREf+DwnOXAavNRiUsztLrHVe1VNAOBxMvsxVk1zbzZBpi6xG7y8GdhCuOesfu7Ng2JREDg==",
+      "header": "key.MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=.dAdbJoMplPHWWh+UREf+DwnOXAavNRiUsztLrHVe1VNAOBxMvsxVk1zbzZBpi6xG7y8GdhCuOesfu7Ng2JREDg==.1792500300"
+    }
+  },
+  "certificate": {
+    "json": "{\"v\":1,\"device\":\"MCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=\",\"service\":\"MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=\",\"instance\":\"s3-local/Backup Disk\",\"deviceName\":\"Mac Studio\",\"platform\":\"macos\",\"iat\":1792500000,\"exp\":1793104800}",
+    "payload": "eyJ2IjoxLCJkZXZpY2UiOiJNQ293QlFZREsyVndBeUVBN1Vrb3hpalJ3c2JxNlFNNGtGbVZZU2xaSnpwY1kvazJOc0ZHRkt5SE45RT0iLCJzZXJ2aWNlIjoiTUNvd0JRWURLMlZ3QXlFQWdUbDNEcWg5RjE5V28xUm13MHgrek11TmlwRzA3amVpWGZZUFc0L0pzNVE9IiwiaW5zdGFuY2UiOiJzMy1sb2NhbC9CYWNrdXAgRGlzayIsImRldmljZU5hbWUiOiJNYWMgU3R1ZGlvIiwicGxhdGZvcm0iOiJtYWNvcyIsImlhdCI6MTc5MjUwMDAwMCwiZXhwIjoxNzkzMTA0ODAwfQ",
+    "signature": "5MH67wzMP2dVCjtWP1wNtFSG0NeKAz25Hxm5rXqinaQxRPKtwvRRBI2FraoIvRiCKvQQmY4YlzANEbrjmGeCCw==",
+    "header": "eyJ2IjoxLCJkZXZpY2UiOiJNQ293QlFZREsyVndBeUVBN1Vrb3hpalJ3c2JxNlFNNGtGbVZZU2xaSnpwY1kvazJOc0ZHRkt5SE45RT0iLCJzZXJ2aWNlIjoiTUNvd0JRWURLMlZ3QXlFQWdUbDNEcWg5RjE5V28xUm13MHgrek11TmlwRzA3amVpWGZZUFc0L0pzNVE9IiwiaW5zdGFuY2UiOiJzMy1sb2NhbC9CYWNrdXAgRGlzayIsImRldmljZU5hbWUiOiJNYWMgU3R1ZGlvIiwicGxhdGZvcm0iOiJtYWNvcyIsImlhdCI6MTc5MjUwMDAwMCwiZXhwIjoxNzkzMTA0ODAwfQ.5MH67wzMP2dVCjtWP1wNtFSG0NeKAz25Hxm5rXqinaQxRPKtwvRRBI2FraoIvRiCKvQQmY4YlzANEbrjmGeCCw=="
+  },
+  "childCertificate": {
+    "json": "{\"v\":1,\"device\":\"MCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=\",\"service\":\"MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=\",\"instance\":\"builder\",\"deviceName\":\"builder\",\"platform\":\"linux\",\"parent\":\"Mac Studio\",\"iat\":1792500000,\"exp\":1793104800}",
+    "payload": "eyJ2IjoxLCJkZXZpY2UiOiJNQ293QlFZREsyVndBeUVBN1Vrb3hpalJ3c2JxNlFNNGtGbVZZU2xaSnpwY1kvazJOc0ZHRkt5SE45RT0iLCJzZXJ2aWNlIjoiTUNvd0JRWURLMlZ3QXlFQWdUbDNEcWg5RjE5V28xUm13MHgrek11TmlwRzA3amVpWGZZUFc0L0pzNVE9IiwiaW5zdGFuY2UiOiJidWlsZGVyIiwiZGV2aWNlTmFtZSI6ImJ1aWxkZXIiLCJwbGF0Zm9ybSI6ImxpbnV4IiwicGFyZW50IjoiTWFjIFN0dWRpbyIsImlhdCI6MTc5MjUwMDAwMCwiZXhwIjoxNzkzMTA0ODAwfQ",
+    "signature": "Qs3s5tBSaA/t7xBHvXJOEKSxHwPQMAN7g1wqfqueQMZk3iAfAenWTYPXnhQRpUq7QWsU6xZ2pD1m1lT0xKuTBg==",
+    "header": "eyJ2IjoxLCJkZXZpY2UiOiJNQ293QlFZREsyVndBeUVBN1Vrb3hpalJ3c2JxNlFNNGtGbVZZU2xaSnpwY1kvazJOc0ZHRkt5SE45RT0iLCJzZXJ2aWNlIjoiTUNvd0JRWURLMlZ3QXlFQWdUbDNEcWg5RjE5V28xUm13MHgrek11TmlwRzA3amVpWGZZUFc0L0pzNVE9IiwiaW5zdGFuY2UiOiJidWlsZGVyIiwiZGV2aWNlTmFtZSI6ImJ1aWxkZXIiLCJwbGF0Zm9ybSI6ImxpbnV4IiwicGFyZW50IjoiTWFjIFN0dWRpbyIsImlhdCI6MTc5MjUwMDAwMCwiZXhwIjoxNzkzMTA0ODAwfQ.Qs3s5tBSaA/t7xBHvXJOEKSxHwPQMAN7g1wqfqueQMZk3iAfAenWTYPXnhQRpUq7QWsU6xZ2pD1m1lT0xKuTBg=="
+  },
+  "caller": {
+    "context": {
+      "hub": {
+        "caller": {
+          "key": "MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=",
+          "device": {
+            "id": "8cef065b7af83669150b7d32704d3d3e",
+            "name": "Mac Studio"
+          },
+          "groups": [
+            "owners"
+          ],
+          "owner": true
+        },
+        "hubKey": "MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
+      }
+    }
+  }
+}

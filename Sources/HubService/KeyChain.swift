@@ -55,7 +55,7 @@ public struct KeyChain: Sendable {
     KeyChain(.keychain(tag))
   }
 #endif
-  public enum Location {
+  public enum Location: Sendable {
     case file(URL)
     static var documents: Location {
       .file(FileManager.default
@@ -153,6 +153,14 @@ public struct KeyChain: Sendable {
       return data
     }
 
+    fileprivate static func replace(
+      _ data: Data,
+      configuration: KeychainConfiguration
+    ) throws {
+      SecItemDelete(query(configuration) as CFDictionary)
+      try save(data, configuration: configuration)
+    }
+
     fileprivate static func save(
       _ data: Data,
       configuration: KeychainConfiguration
@@ -169,7 +177,10 @@ public struct KeyChain: Sendable {
   }
   
   private let privateKey: Curve25519.Signing.PrivateKey
+  /// Where the key is stored, `nil` for keys that only live in memory
+  public let location: Location?
   public init(_ location: Location) {
+    self.location = location
     if let data = location.load(), let key = try? Curve25519.Signing.PrivateKey(rawRepresentation: data) {
       self.privateKey = key
     } else {
@@ -182,11 +193,42 @@ public struct KeyChain: Sendable {
   public init(_ location: Location, rawRepresentation: Data) throws {
     let key = try Curve25519.Signing.PrivateKey(rawRepresentation: rawRepresentation)
     privateKey = key
+    self.location = location
     location.save(key.rawRepresentation)
+  }
+
+  /// A key that isn't stored anywhere, from its 32-byte seed
+  public init(rawRepresentation: Data) throws {
+    privateKey = try Curve25519.Signing.PrivateKey(rawRepresentation: rawRepresentation)
+    location = nil
+  }
+
+  /// A key in the Hub key file format: base64 of the PKCS#8 DER private key (48 bytes) followed by the
+  /// SPKI DER public key (44 bytes). Service `auth` files and `device.key` use it.
+  public init(keyFile text: String) throws {
+    guard let bytes = Data(base64Encoded: text.trimmingCharacters(in: .whitespacesAndNewlines)),
+          bytes.count == Self.pkcs8Prefix.count + 32 + Self.prefix.count + 32,
+          bytes.starts(with: Self.pkcs8Prefix) else { throw Error.invalidPrivateKey }
+    let seed = bytes.subdata(in: Self.pkcs8Prefix.count..<Self.pkcs8Prefix.count + 32)
+    do {
+      privateKey = try Curve25519.Signing.PrivateKey(rawRepresentation: seed)
+    } catch {
+      throw Error.invalidPrivateKey
+    }
+    guard bytes.suffix(Self.prefix.count + 32) == Self.prefix + privateKey.publicKey.rawRepresentation else {
+      throw Error.invalidPublicKey
+    }
+    location = nil
+  }
+
+  /// The key in the Hub key file format, see `init(keyFile:)`
+  public var keyFile: String {
+    (Self.pkcs8Prefix + privateKey.rawRepresentation + publicKeyData()).base64EncodedString()
   }
 
 #if canImport(Security)
   public init(keychain configuration: KeychainConfiguration, createIfMissing: Bool = true) throws {
+    location = .configuredKeychain(configuration)
     if let data = try Location.load(configuration) {
       do {
         privateKey = try Curve25519.Signing.PrivateKey(rawRepresentation: data)
@@ -210,6 +252,17 @@ public struct KeyChain: Sendable {
     }
     try Location.save(key.rawRepresentation, configuration: configuration)
     privateKey = key
+    location = .configuredKeychain(configuration)
+  }
+
+  /// Reads a configured Keychain item, `nil` when it doesn't exist
+  public static func loadData(keychain configuration: KeychainConfiguration) throws -> Data? {
+    try Location.load(configuration)
+  }
+
+  /// Writes a configured Keychain item, replacing an existing one
+  public static func replaceData(_ data: Data, keychain configuration: KeychainConfiguration) throws {
+    try Location.replace(data, configuration: configuration)
   }
 #endif
 
@@ -259,6 +312,8 @@ public struct KeyChain: Sendable {
     Self.prefix + data
   }
 
+  /// ED25519 PKCS#8 prefix, followed by the 32-byte seed
+  private static let pkcs8Prefix = Data([0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x04, 0x22, 0x04, 0x20])
   /// ED25519 spki prefix
   private static let prefix = Data([0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00])
 }

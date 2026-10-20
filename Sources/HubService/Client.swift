@@ -26,24 +26,43 @@ public class HubClient: @MainActor Identifiable {
   public let channel: Channel<Void>
   public let service: HubService
   public var profile: Profile
+  /// Hub keys pinned per address; a pinned key makes the connection send hub-bound `v: 1` tokens
+  public let hubKeys: HubKeyPins
+  /// The pinned key of this hub, learned from `hub/info` or supplied up front
+  public var hubKey: String? { hubKeys.key(for: url) }
+  /// Set when the hub answered `hub/info`
+  public private(set) var info: HubInfo?
+  /// Called when a hub's key couldn't be learned or no longer matches
+  public var onHubKeyError: ((HubKeyError) -> Void)?
   private var sender: ClientSender<Void>!
-  public init(_ url: URL = HubClient.local, keyChain: KeyChain? = nil, connect: Bool = true) {
+  public struct Options {
+    /// The hub's key when it is known up front (from an invitation or configuration); it is pinned
+    public var hubKey: String?
+    /// Where hub keys are pinned. `nil` keeps them beside the key: `hubs.json` or a Keychain item
+    public var hubKeys: HubKeyPins?
+    public init(hubKey: String? = nil, hubKeys: HubKeyPins? = nil) {
+      self.hubKey = hubKey
+      self.hubKeys = hubKeys
+    }
+  }
+  public init(_ url: URL = HubClient.local, keyChain: KeyChain? = nil, connect: Bool = true, options: Options = Options()) {
     self.url = url
     channel = Channel()
     service = HubService(channel: channel)
     profile = Profile(name: .device, icon: .device)
+    hubKeys = options.hubKeys ?? keyChain.map(HubKeyPins.beside) ?? HubKeyPins(.memory)
+    if let hubKey = options.hubKey {
+      hubKeys.pin(hubKey, for: url)
+    }
     guard connect else { return }
     if let keyChain {
-      let serviceKey = keyChain.publicKey()
       service.network.configureIdentity(keyChain)
-      sender = channel.connect(url, options: ClientOptions(headers: {
-        let key = serviceKey
-        let time = "\(Int(Date().timeIntervalSince1970 + 60))"
-        let sign = keyChain.sign(text: time)
-        return ["auth": "key.\(key).\(sign).\(time)"]
+      sender = channel.connect(url, options: ClientOptions(headers: { [weak self] in
+        HubAuth.headers(keyChain, hubKey: self?.hubKey)
       }, onConnect: { [weak self] sender in
         guard let self else { return }
         try? await sender.send("hub/profile/update", profile)
+        guard await learnHubKey(sender) else { return }
         try await service.sendServiceUpdates(first: true)
         try await service.network.didConnect(sender)
       }))
@@ -51,6 +70,34 @@ public class HubClient: @MainActor Identifiable {
       sender = channel.connect(url)
     }
     service.sender = sender
+  }
+
+  /// Forgets the pinned key, so the next connection learns it again with a v0 token
+  public func forgetHubKey() {
+    hubKeys.forget(url)
+    sender?.reconnectNow()
+  }
+
+  /// Reads `hub/info`. Without a pinned key, pins it and reconnects with a v1 token.
+  /// A different key than the pinned one is reported and never replaces it.
+  /// - Returns: `false` when the connection is about to be replaced
+  private func learnHubKey(_ sender: ChannelSender<Void>) async -> Bool {
+    guard let info: HubInfo = try? await sender.send("hub/info") else { return true }
+    self.info = info
+    guard let pinned = hubKey else {
+      hubKeys.pin(info.key, for: url)
+      self.sender?.reconnectNow()
+      return false
+    }
+    if pinned != info.key {
+      onHubKeyError?(.mismatch(pinned: pinned, received: info.key))
+    }
+    return true
+  }
+
+  public enum HubKeyError: Error, Hashable, Sendable {
+    /// The hub at this address has another key than the pinned one: the hub key changed or another server answers
+    case mismatch(pinned: String, received: String)
   }
   // No body
   public func send<Output: Decodable>(_ path: String) async throws -> Output {
