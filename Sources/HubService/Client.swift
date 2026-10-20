@@ -134,7 +134,7 @@ public class HubClient: @MainActor Identifiable {
   /// Forgets the pinned key, so the next connection learns it again with a v0 token
   public func forgetHubKey() {
     hubKeys.forget(url)
-    sender?.reconnectNow()
+    sender?.ws.reconnect()
   }
 
   /// Reads `hub/info`. Without a pinned key, pins it and reconnects with a v1 token (and the device certificate).
@@ -145,7 +145,7 @@ public class HubClient: @MainActor Identifiable {
     self.info = info
     guard let pinned = hubKey else {
       hubKeys.pin(info.key, for: url)
-      self.sender?.reconnectNow()
+      self.sender?.ws.reconnect()
       return false
     }
     if pinned != info.key {
