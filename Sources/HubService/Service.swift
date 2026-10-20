@@ -19,6 +19,14 @@ public class HubService {
   }
   var disabled = Set<String>()
   var groups = [Group]()
+  /// Asks for the reporter role of this connection's device (`hub/device/describe`, `hub/device/data`).
+  /// The hub gives it to the first connected service of a device that asks.
+  public var isReporter = false {
+    didSet {
+      guard isReporter != oldValue else { return }
+      sendServiceUpdates()
+    }
+  }
   private var options = [String: Options]()
   private var serviceUpdatesTask: Task<Void, Error>? {
     didSet { oldValue?.cancel() }
@@ -115,7 +123,7 @@ public class HubService {
       }
     }
     let apps = apps.filter { !disabledApps.contains($0.path) }
-    let update = HubService.Update(services: api.map { ServiceHeader(path: $0, options: options[$0]) }, apps: apps)
+    let update = HubService.Update(services: api.map { ServiceHeader(path: $0, options: options[$0]) }, apps: apps, reporter: isReporter ? true : nil)
     if !first || !update.isEmpty {
       try await sender.send("hub/service/update", update)
     }
@@ -128,7 +136,8 @@ public class HubService {
   struct Update: Encodable {
     var services: [ServiceHeader]
     var apps: [AppHeader]
-    var isEmpty: Bool { services.isEmpty && apps.isEmpty }
+    var reporter: Bool?
+    var isEmpty: Bool { services.isEmpty && apps.isEmpty && reporter == nil }
   }
   
   private enum ApiPath: Hashable {
@@ -138,9 +147,12 @@ public class HubService {
   public struct Options: Hashable {
     public var limit: Int?
     public var permissions: Permissions?
-    public init(limit: Int? = nil, permissions: Permissions? = nil) {
+    /// Callable by anyone when the hub denies by default
+    public var isPublic: Bool
+    public init(limit: Int? = nil, permissions: Permissions? = nil, isPublic: Bool = false) {
       self.limit = limit
       self.permissions = permissions
+      self.isPublic = isPublic
     }
   }
   public struct Permissions: Hashable, Encodable, Sendable {
@@ -230,10 +242,12 @@ struct ServiceHeader: Encodable, Sendable {
   let path: String
   let limit: Int?
   let permissions: HubService.Permissions?
+  let `public`: Bool?
   init(path: String, options: HubService.Options?) {
     self.path = path
     self.limit = options?.limit
     self.permissions = options?.permissions
+    self.public = options?.isPublic == true ? true : nil
   }
 }
 

@@ -37,6 +37,7 @@ public class HubClient: @MainActor Identifiable {
   /// Called when a hub's key couldn't be learned or no longer matches
   public var onHubKeyError: ((HubKeyError) -> Void)?
   private var sender: ClientSender<Void>!
+  private var reporter: DeviceReporter?
   public struct Options {
     /// The hub's key when it is known up front (from an invitation or configuration); it is pinned
     public var hubKey: String?
@@ -78,12 +79,35 @@ public class HubClient: @MainActor Identifiable {
         try? await sender.send("hub/profile/update", profile)
         guard await learnHubKey(sender) else { return }
         try await service.sendServiceUpdates(first: true)
+        await reporter?.connected(self)
         try await service.network.didConnect(sender)
       }))
     } else {
       sender = channel.connect(url)
     }
     service.sender = sender
+  }
+
+  /// Takes the reporter role for this client's device: describes the device on every connection and sends live
+  /// data every `interval` seconds while connected. Another connection of the device may hold the role; then the
+  /// hub refuses and this client keeps trying.
+  public func report(
+    every interval: TimeInterval = 30,
+    description: @escaping @MainActor () async -> DeviceDescription,
+    data: @escaping @MainActor () async -> DeviceData
+  ) {
+    reporter?.stop()
+    reporter = DeviceReporter(interval: interval, description: description, data: data)
+    service.isReporter = true
+    if isConnected {
+      reporter?.connected(self)
+    }
+  }
+
+  public func stopReporting() {
+    reporter?.stop()
+    reporter = nil
+    service.isReporter = false
   }
 
   /// Forgets the pinned key, so the next connection learns it again with a v0 token
@@ -202,6 +226,34 @@ public class HubClient: @MainActor Identifiable {
   public struct Profile: Codable, Sendable, Hashable {
     public var name: String
     public var icon: Icon
+  }
+}
+
+@MainActor
+final class DeviceReporter {
+  let interval: TimeInterval
+  let description: @MainActor () async -> DeviceDescription
+  let data: @MainActor () async -> DeviceData
+  private var task: Task<Void, Never>? {
+    didSet { oldValue?.cancel() }
+  }
+  init(interval: TimeInterval, description: @escaping @MainActor () async -> DeviceDescription, data: @escaping @MainActor () async -> DeviceData) {
+    self.interval = interval
+    self.description = description
+    self.data = data
+  }
+  func connected(_ client: HubClient) {
+    task = Task { [weak client, interval, description, data] in
+      guard let devices = client?.devices else { return }
+      try? await devices.describe(description())
+      while !Task.isCancelled, client?.isConnected == true {
+        try? await devices.report(data())
+        try? await Task.sleep(nanoseconds: UInt64(max(interval, 1) * 1_000_000_000))
+      }
+    }
+  }
+  func stop() {
+    task = nil
   }
 }
 
