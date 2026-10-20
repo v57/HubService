@@ -37,6 +37,11 @@ struct Vectors: Decodable {
   }
   var certificate: Certificate
   var childCertificate: Certificate
+  var caller: CallerVector
+  struct CallerVector: Decodable {
+    var context: Context
+    struct Context: Decodable { var hub: HubRequestContext }
+  }
 
   static func load() throws -> Vectors {
     let url = try #require(Bundle.module.url(forResource: "Fixtures/device-vectors", withExtension: "json"))

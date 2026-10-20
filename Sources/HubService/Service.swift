@@ -27,40 +27,74 @@ public class HubService {
     self.channel = channel
   }
   public func post<Input: Decodable & Sendable, Output: Encodable & Sendable>(_ path: String, options: Options? = nil, request: @escaping (@Sendable (Input) async throws -> Output)) -> Self {
-    add(path: path, options: options) {
-      $0.post(path, request: request)
+    add(path: path, options: options, decode: { try $0.body() as Input }) { input in
+      try await request(input)
     }
   }
   public func post<Input: Decodable & Sendable>(_ path: String, options: Options? = nil, request: @escaping (@Sendable (Input) async throws -> Void)) -> Self {
-    add(path: path, options: options) {
-      $0.post(path, request: request)
+    add(path: path, options: options, decode: { try $0.body() as Input }) { input in
+      try await request(input)
+      return NoOutput()
     }
   }
   public func post<Output: Encodable & Sendable>(_ path: String, options: Options? = nil, request: @escaping (@Sendable () async throws -> Output)) -> Self {
-    add(path: path, options: options) {
-      $0.post(path, request: request)
+    add(path: path, options: options, decode: { _ in }) {
+      try await request()
     }
   }
   public func post(_ path: String, options: Options? = nil, request: @escaping (@Sendable () async throws -> Void)) -> Self {
-    add(path: path, options: options) {
-      $0.post(path, request: request)
+    add(path: path, options: options, decode: { _ in }) {
+      try await request()
+      return NoOutput()
     }
   }
   public func stream<Input: Decodable & Sendable>(_ path: String, options: Options? = nil, request: @escaping @Sendable (Input, AsyncThrowingStream<Encodable & Sendable, Error>.Continuation) async throws -> Void) -> Self {
-    add(path: path, options: options) {
-      $0.stream(path, request: request)
+    add(path: path, options: options, decode: { try $0.body() as Input }) { input, continuation in
+      try await request(input, continuation)
     }
   }
   public func stream(_ path: String, options: Options? = nil, request: @escaping @Sendable (AsyncThrowingStream<Encodable & Sendable, Error>.Continuation) async throws -> Void) -> Self {
-    add(path: path, options: options) {
-      $0.stream(path, request: request)
+    add(path: path, options: options, decode: { _ in }) { _, continuation in
+      try await request(continuation)
     }
   }
-  private func add(path: String, options: Options?, add: (Channel<Void>) -> Channel<Void>) -> Self {
+  /// Decodes the body and the hub context on the main actor (the decoding container isn't thread-safe), then runs
+  /// the handler with `HubRequest.current` set
+  private func add<Input: Sendable>(path: String, options: Options?, decode: @escaping @Sendable @MainActor (AnyBody) throws -> Input, post: @escaping @Sendable (Input) async throws -> Encodable & Sendable) -> Self {
     if let options {
       self.options[path] = options
     }
-    _ = add(channel)
+    channel.postApi[path] = { body, path in
+      let (request, input) = try await MainActor.run {
+        (HubRequest(path: path, body: body.body), try decode(body.body))
+      }
+      return try await HubRequest.$current.withValue(request) {
+        try await post(input)
+      }
+    }
+    return self
+  }
+  private func add<Input: Sendable>(path: String, options: Options?, decode: @escaping @Sendable @MainActor (AnyBody) throws -> Input, stream: @escaping @Sendable (Input, AsyncThrowingStream<Encodable & Sendable, Error>.Continuation) async throws -> Void) -> Self {
+    if let options {
+      self.options[path] = options
+    }
+    channel.streamApi[path] = { body, path in
+      AsyncThrowingStream { continuation in
+        Task {
+          do {
+            let (request, input) = try await MainActor.run {
+              (HubRequest(path: path, body: body.body), try decode(body.body))
+            }
+            try await HubRequest.$current.withValue(request) {
+              try await stream(input, continuation)
+            }
+            continuation.finish()
+          } catch {
+            continuation.finish(throwing: error)
+          }
+        }
+      }
+    }
     return self
   }
   public func sendServiceUpdates() {
@@ -202,3 +236,6 @@ struct ServiceHeader: Encodable, Sendable {
     self.permissions = options?.permissions
   }
 }
+
+/// Result of handlers that return nothing, encoded like Channel's `EmptyCodable`
+private struct NoOutput: Encodable, Sendable { }
