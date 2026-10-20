@@ -3,7 +3,7 @@ import Testing
 import CryptoKit
 @testable import HubService
 
-private func compactInvitation(expires: UInt32, query: String? = nil) -> (
+private func compactInvitation(expires: UInt32, query: String? = "e=node.example") -> (
   code: String, url: String, payload: String, publicKey: String
 ) {
   let key = Curve25519.Signing.PrivateKey()
@@ -120,10 +120,19 @@ struct HubNetworkWireCompatibilityTests {
     let decodedCode = try NetworkInvitationParser.decode(fixture.code, now: now)
     let decodedURL = try NetworkInvitationParser.decode(fixture.url, now: now)
     #expect(decodedCode == decodedURL)
-    #expect(decodedCode.node == NetworkInvitationParser.defaultNode)
+    #expect(decodedCode.node == "node.example")
     #expect(decodedCode.url == fixture.url)
     #expect(decodedCode.payload == fixture.payload)
     #expect(decodedCode.publicKey == fixture.publicKey)
+  }
+
+  @Test("an invitation without a node endpoint is malformed (there is no default node)")
+  func invitationWithoutNode() throws {
+    let now = Date(timeIntervalSince1970: 1_785_796_800)
+    let fixture = compactInvitation(expires: UInt32(now.timeIntervalSince1970) + 600, query: nil)
+    #expect(throws: NetworkInvitationError(code: .malformed, message: "invitation has no node endpoint")) {
+      try NetworkInvitationParser.decode(fixture.code, now: now)
+    }
   }
 
   @Test("invitation parser rejects non-canonical and untrusted inputs")

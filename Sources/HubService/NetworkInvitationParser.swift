@@ -41,7 +41,6 @@ public struct NetworkInvitationError: Error, Equatable, Sendable {
 
 public enum NetworkInvitationParser {
   public static let urlPrefix = "hub://join/"
-  public static let defaultNode = "hub.v57.dev/node"
   public static let maximumCodeBytes = 1_024
   public static let maximumLifetime: TimeInterval = 8 * 24 * 60 * 60
 
@@ -83,9 +82,10 @@ public enum NetworkInvitationParser {
       throw failure(.invalidTime, "invitation exceeds maximum lifetime")
     }
 
+    // Invitations carry their node: there is no built-in one
     let node: String
     if payloadParts.count == 1 {
-      node = defaultNode
+      throw failure(.malformed, "invitation has no node endpoint")
     } else {
       let rawQuery = String(payloadParts[1])
       guard let components = URLComponents(string: "x://x/?" + rawQuery),
