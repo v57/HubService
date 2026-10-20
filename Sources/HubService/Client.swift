@@ -30,6 +30,8 @@ public class HubClient: @MainActor Identifiable {
   public let hubKeys: HubKeyPins
   /// The pinned key of this hub, learned from `hub/info` or supplied up front
   public var hubKey: String? { hubKeys.key(for: url) }
+  /// `nil` when the client connects without a device
+  public let device: DeviceIdentity?
   /// Set when the hub answered `hub/info`
   public private(set) var info: HubInfo?
   /// Called when a hub's key couldn't be learned or no longer matches
@@ -40,9 +42,15 @@ public class HubClient: @MainActor Identifiable {
     public var hubKey: String?
     /// Where hub keys are pinned. `nil` keeps them beside the key: `hubs.json` or a Keychain item
     public var hubKeys: HubKeyPins?
-    public init(hubKey: String? = nil, hubKeys: HubKeyPins? = nil) {
+    /// The device this client runs on. `nil` connects without a device (no `device` header)
+    public var device: DeviceIdentity?
+    /// The instance name in the certificate, unique per device: `s3-local/Backup Disk`. Defaults to the process name
+    public var instance: String?
+    public init(hubKey: String? = nil, hubKeys: HubKeyPins? = nil, device: DeviceIdentity? = nil, instance: String? = nil) {
       self.hubKey = hubKey
       self.hubKeys = hubKeys
+      self.device = device
+      self.instance = instance
     }
   }
   public init(_ url: URL = HubClient.local, keyChain: KeyChain? = nil, connect: Bool = true, options: Options = Options()) {
@@ -51,14 +59,20 @@ public class HubClient: @MainActor Identifiable {
     service = HubService(channel: channel)
     profile = Profile(name: .device, icon: .device)
     hubKeys = options.hubKeys ?? keyChain.map(HubKeyPins.beside) ?? HubKeyPins(.memory)
+    device = keyChain == nil ? nil : options.device
     if let hubKey = options.hubKey {
       hubKeys.pin(hubKey, for: url)
     }
     guard connect else { return }
     if let keyChain {
+      let serviceKey = keyChain.publicKey()
+      let issuer = device.map {
+        CertificateIssuer(device: $0, service: serviceKey, instance: options.instance ?? ProcessInfo.processInfo.processName)
+      }
       service.network.configureIdentity(keyChain)
       sender = channel.connect(url, options: ClientOptions(headers: { [weak self] in
-        HubAuth.headers(keyChain, hubKey: self?.hubKey)
+        let hubKey = self?.hubKey
+        return HubAuth.headers(keyChain, hubKey: hubKey, certificate: hubKey == nil ? nil : issuer?.header())
       }, onConnect: { [weak self] sender in
         guard let self else { return }
         try? await sender.send("hub/profile/update", profile)
@@ -78,7 +92,7 @@ public class HubClient: @MainActor Identifiable {
     sender?.reconnectNow()
   }
 
-  /// Reads `hub/info`. Without a pinned key, pins it and reconnects with a v1 token.
+  /// Reads `hub/info`. Without a pinned key, pins it and reconnects with a v1 token (and the device certificate).
   /// A different key than the pinned one is reported and never replaces it.
   /// - Returns: `false` when the connection is about to be replaced
   private func learnHubKey(_ sender: ChannelSender<Void>) async -> Bool {
