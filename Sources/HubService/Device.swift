@@ -37,6 +37,14 @@ public struct DeviceKey: Sendable {
     return "\(digits.prefix(3)) \(digits.suffix(3))"
   }
 
+  /// Verifies a device signature (standard base64) over `text` with a device SPKI
+  public static func verify(signature: String, text: String, publicKey: String) -> Bool {
+    guard let raw = KeyChain.rawPublicKey(spkiBase64: publicKey),
+          let key = try? Curve25519.Signing.PublicKey(rawRepresentation: raw),
+          let signature = Data(base64Encoded: signature) else { return false }
+    return key.isValidSignature(signature, for: Data(text.utf8))
+  }
+
   private static func digest(_ publicKey: String) -> String {
     let data = Data(base64Encoded: publicKey) ?? Data(publicKey.utf8)
     return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
@@ -83,6 +91,11 @@ public struct DeviceKey: Sendable {
   }
 
 #if canImport(Security)
+  /// A device key in any Keychain item the caller chooses, e.g. a sandboxed app's own. Created if missing.
+  public static func keychain(_ configuration: KeyChain.KeychainConfiguration) throws -> DeviceKey {
+    DeviceKey(try KeyChain(keychain: configuration))
+  }
+
   public static let keychainService = "dev.v57.Hub.device.v1"
   /// Keychain item `dev.v57.Hub.device.v1`, `ThisDeviceOnly`, shared with extensions through `accessGroup`
   public static func keychain(accessGroup: String? = nil, useDataProtectionKeychain: Bool = true) throws -> DeviceKey {
@@ -192,8 +205,16 @@ public struct DeviceIdentity: Sendable {
   }
 
   /// The device key file (`HUB_DEVICE_KEY` or `~/.hub/device.key`) named after this computer
-  public static func file(_ url: URL = DeviceKey.defaultFile, name: String? = ProcessInfo.processInfo.hostName) throws -> DeviceIdentity {
+  public static func file(_ url: URL = DeviceKey.defaultFile, name: String? = DeviceIdentity.computerName) throws -> DeviceIdentity {
     DeviceIdentity(key: try DeviceKey.file(url), name: name)
+  }
+
+  /// The computer name the user chose (macOS ComputerName), else the host name
+  public static var computerName: String {
+#if os(macOS)
+    if let name = Host.current().localizedName, !name.isEmpty { return name }
+#endif
+    return ProcessInfo.processInfo.hostName
   }
 
   public static var currentPlatform: String {
@@ -224,16 +245,21 @@ public struct DeviceIdentity: Sendable {
 final class CertificateIssuer {
   let device: DeviceIdentity
   let service: String
-  let instance: String
+  private let instance: @MainActor () -> String
   private var current: ServiceCertificate?
-  init(device: DeviceIdentity, service: String, instance: String) {
+  init(device: DeviceIdentity, service: String, instance: @escaping @MainActor () -> String) {
     self.device = device
     self.service = service
-    self.instance = String(instance.truncated(bytes: 128))
+    self.instance = instance
+  }
+  convenience init(device: DeviceIdentity, service: String, instance: String) {
+    self.init(device: device, service: service, instance: { instance })
   }
   func header(now: Date = Date()) -> String {
     let now = Int(now.timeIntervalSince1970)
-    if let current, !current.needsRenewal(now: now) {
+    var instance = String(self.instance().truncated(bytes: 128))
+    if instance.isEmpty { instance = "service" }
+    if let current, current.fields.instance == instance, !current.needsRenewal(now: now) {
       return current.header
     }
     let certificate = device.key.certificate(

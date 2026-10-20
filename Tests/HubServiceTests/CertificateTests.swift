@@ -54,6 +54,17 @@ struct CertificateTests {
   }
 
   @MainActor
+  @Test("a changed instance name gets a new certificate")
+  func instanceChange() throws {
+    var name = "a"
+    let issuer = CertificateIssuer(device: DeviceIdentity(key: DeviceKey(KeyChain(.none))), service: "s") { name }
+    let start = Date(timeIntervalSince1970: 1_800_000_000)
+    let first = issuer.header(now: start)
+    name = "b"
+    #expect(issuer.header(now: start) != first)
+  }
+
+  @MainActor
   @Test("the issuer reuses a certificate until it needs renewal")
   func issuer() throws {
     let issuer = CertificateIssuer(device: DeviceIdentity(key: DeviceKey(KeyChain(.none))), service: "s", instance: "i")

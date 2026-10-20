@@ -136,17 +136,48 @@ public struct Capabilities: Codable, Hashable, Sendable {
     }
   }
   public struct SSH: Codable, Hashable, Sendable {
+    /// A host key signed by the device key
+    public struct HostKey: Codable, Hashable, Sendable {
+      /// OpenSSH public key line without comment: `ssh-ed25519 AAAA…`
+      public var hostKey: String
+      /// Device signature over `ssh1:<hostKey>`
+      public var hostKeySignature: String
+      public init(hostKey: String, device: DeviceKey) {
+        self.hostKey = hostKey
+        hostKeySignature = device.keyChain.sign(text: "ssh1:\(hostKey)")
+      }
+      /// Whether `deviceKey` (the device's SPKI, `Device.key`) signed this host key
+      public func isSigned(by deviceKey: String) -> Bool {
+        DeviceKey.verify(signature: hostKeySignature, text: "ssh1:\(hostKey)", publicKey: deviceKey)
+      }
+    }
     public var port: Int
     public var user: String?
-    /// OpenSSH public key line
+    /// The preferred host key: an OpenSSH public key line without comment
     public var hostKey: String
     /// Device signature over `ssh1:<hostKey>`
     public var hostKeySignature: String
-    public init(port: Int, user: String? = nil, hostKey: String, device: DeviceKey) {
+    /// Every host key the server offers (ECDSA and RSA too), signed the same way
+    public var hostKeys: [HostKey]?
+    public init(port: Int, user: String? = nil, hostKey: String, otherHostKeys: [String] = [], device: DeviceKey) {
       self.port = port
       self.user = user
       self.hostKey = hostKey
       hostKeySignature = device.keyChain.sign(text: "ssh1:\(hostKey)")
+      hostKeys = otherHostKeys.isEmpty ? nil : ([hostKey] + otherHostKeys).map { HostKey(hostKey: $0, device: device) }
+    }
+    /// Whether `deviceKey` (the device's SPKI, `Device.key`) signed the preferred host key. Check this before
+    /// pinning `hostKey`.
+    public func isSigned(by deviceKey: String) -> Bool {
+      DeviceKey.verify(signature: hostKeySignature, text: "ssh1:\(hostKey)", publicKey: deviceKey)
+    }
+    /// The host keys signed by `deviceKey`, the preferred one first
+    public func verifiedHostKeys(deviceKey: String) -> [String] {
+      var keys = isSigned(by: deviceKey) ? [hostKey] : []
+      for key in hostKeys ?? [] where key.hostKey != hostKey && key.isSigned(by: deviceKey) {
+        keys.append(key.hostKey)
+      }
+      return keys
     }
   }
   public var cpu: CPU?

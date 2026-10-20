@@ -49,7 +49,8 @@ public class HubClient: @MainActor Identifiable {
     public var hubKeys: HubKeyPins?
     /// The device this client runs on. `nil` connects without a device (no `device` header)
     public var device: DeviceIdentity?
-    /// The instance name in the certificate, unique per device: `s3-local/Backup Disk`. Defaults to the process name
+    /// The instance name in the certificate, unique per device: `s3-local/Backup Disk`. Defaults to the profile
+    /// name, else the working directory's name
     public var instance: String?
     public init(hubKey: String? = nil, hubKeys: HubKeyPins? = nil, device: DeviceIdentity? = nil, instance: String? = nil) {
       self.hubKey = hubKey
@@ -72,7 +73,11 @@ public class HubClient: @MainActor Identifiable {
     if let keyChain {
       let serviceKey = keyChain.publicKey()
       let issuer = device.map {
-        CertificateIssuer(device: $0, service: serviceKey, instance: options.instance ?? ProcessInfo.processInfo.processName)
+        CertificateIssuer(device: $0, service: serviceKey) { [weak self] in
+          if let instance = options.instance { return instance }
+          if let name = self?.profile.name, !name.isEmpty { return name }
+          return URL(fileURLWithPath: FileManager.default.currentDirectoryPath).lastPathComponent
+        }
       }
       service.network.configureIdentity(keyChain)
       sender = channel.connect(url, options: ClientOptions(headers: { [weak self] in

@@ -82,10 +82,19 @@ struct DevicesAPITests {
     #expect(legacy.member == nil && legacy.device == nil)
   }
 
-  @Test("ssh host keys are signed by the device")
+  @Test("ssh host keys are signed by the device and verify against its key")
   func ssh() throws {
     let device = DeviceKey(KeyChain(.none))
-    let ssh = Capabilities.SSH(port: 22, hostKey: "ssh-ed25519 AAAA host", device: device)
-    #expect(!ssh.hostKeySignature.isEmpty)
+    let other = DeviceKey(KeyChain(.none))
+    let ssh = Capabilities.SSH(port: 22, user: "v57", hostKey: "ssh-ed25519 AAAAC3Nz", otherHostKeys: ["ecdsa-sha2-nistp256 AAAAE2Vj"], device: device)
+    #expect(ssh.isSigned(by: device.publicKey))
+    #expect(!ssh.isSigned(by: other.publicKey))
+    #expect(ssh.verifiedHostKeys(deviceKey: device.publicKey) == ["ssh-ed25519 AAAAC3Nz", "ecdsa-sha2-nistp256 AAAAE2Vj"])
+    #expect(ssh.verifiedHostKeys(deviceKey: other.publicKey).isEmpty)
+    // Decoded from a hub: a tampered host key no longer verifies
+    var decoded = try JSONDecoder().decode(Capabilities.self, from: JSONEncoder().encode(Capabilities(ssh: ssh))).ssh!
+    #expect(decoded.isSigned(by: device.publicKey))
+    decoded.hostKey = "ssh-ed25519 AAAAevil"
+    #expect(!decoded.isSigned(by: device.publicKey))
   }
 }
