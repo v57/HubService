@@ -34,6 +34,10 @@ public class HubClient: @MainActor Identifiable {
   public let device: DeviceIdentity?
   /// Set when the hub answered `hub/info`
   public private(set) var info: HubInfo?
+  /// The current connection finished its setup: the hub key is learned (or the hub doesn't offer one) and the
+  /// services are sent. A new hub key makes the client reconnect first, so wait for this before calls that need
+  /// the hub-bound, device-attached connection.
+  public private(set) var isReady = false
   /// Called when a hub's key couldn't be learned or no longer matches
   public var onHubKeyError: ((HubKeyError) -> Void)?
   private var sender: ClientSender<Void>!
@@ -72,6 +76,7 @@ public class HubClient: @MainActor Identifiable {
       }
       service.network.configureIdentity(keyChain)
       sender = channel.connect(url, options: ClientOptions(headers: { [weak self] in
+        self?.isReady = false
         let hubKey = self?.hubKey
         return HubAuth.headers(keyChain, hubKey: hubKey, certificate: hubKey == nil ? nil : issuer?.header())
       }, onConnect: { [weak self] sender in
@@ -79,6 +84,7 @@ public class HubClient: @MainActor Identifiable {
         try? await sender.send("hub/profile/update", profile)
         guard await learnHubKey(sender) else { return }
         try await service.sendServiceUpdates(first: true)
+        await setReady()
         await reporter?.connected(self)
         try await service.network.didConnect(sender)
       }))
@@ -108,6 +114,21 @@ public class HubClient: @MainActor Identifiable {
     reporter?.stop()
     reporter = nil
     service.isReporter = false
+  }
+
+  private func setReady() {
+    isReady = true
+  }
+
+  /// Waits until `isReady`, at most `timeout` seconds. Returns whether the connection is ready.
+  @discardableResult
+  public func waitUntilReady(timeout: TimeInterval = 10) async -> Bool {
+    let deadline = Date().addingTimeInterval(timeout)
+    while !(isReady && isConnected) {
+      guard Date() < deadline, !Task.isCancelled else { return false }
+      try? await Task.sleep(nanoseconds: 50_000_000)
+    }
+    return true
   }
 
   /// Forgets the pinned key, so the next connection learns it again with a v0 token
