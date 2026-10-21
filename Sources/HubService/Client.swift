@@ -40,6 +40,11 @@ public class HubClient: @MainActor Identifiable {
   public private(set) var isReady = false
   /// Called when a hub's key couldn't be learned or no longer matches
   public var onHubKeyError: ((HubKeyError) -> Void)?
+  /// Set while the hub refuses this client's connection, with the reason; cleared when a connection opens.
+  /// Posts fail with Channel's `refused` error meanwhile, and the client tries again every 30 seconds.
+  public private(set) var refusal: Refusal?
+  /// Called when the hub refused the connection, once the reason is known
+  public var onRefused: ((Refusal) -> Void)?
   private var sender: ClientSender<Void>!
   private var reporter: DeviceReporter?
   public struct Options {
@@ -86,6 +91,7 @@ public class HubClient: @MainActor Identifiable {
         return HubAuth.headers(keyChain, hubKey: hubKey, certificate: hubKey == nil ? nil : issuer?.header())
       }, onConnect: { [weak self] sender in
         guard let self else { return }
+        await connectionOpened()
         try? await sender.send("hub/profile/update", profile)
         guard await learnHubKey(sender) else { return }
         try await service.sendServiceUpdates(first: true)
@@ -97,6 +103,57 @@ public class HubClient: @MainActor Identifiable {
       sender = channel.connect(url)
     }
     service.sender = sender
+    sender.ws.onRefused = { [weak self] refusal in
+      Task { await self?.refused(statusCode: refusal.statusCode) }
+    }
+  }
+
+  /// Why the hub refuses the connection. A refused upgrade carries only an HTTP status, so the client asks the hub
+  /// anonymously to tell the cases apart.
+  public enum Refusal: Error, Hashable, Sendable, CustomStringConvertible {
+    /// The hub accepts other clients and its key is the pinned one, so it refuses this key: the key or its device
+    /// was revoked (or this device's clock is off by more than 30 seconds)
+    case keyRefused
+    /// A different hub key answers at this address than the pinned one
+    case hubKeyChanged(pinned: String, current: String)
+    /// The hub refuses every client it doesn't know (whitelist or lockdown)
+    case hubNotAvailable
+    /// The hub refused the connection and didn't answer the anonymous check
+    case refused(statusCode: Int)
+
+    public var description: String {
+      switch self {
+      case .keyRefused: "The hub refused this device: its key or the device was revoked, or the device clock is wrong."
+      case .hubKeyChanged: "The hub's key changed since this device first connected, or another server answers at this address."
+      case .hubNotAvailable: "The hub only accepts devices it already knows."
+      case .refused(let statusCode): "The hub refused the connection (HTTP \(statusCode))."
+      }
+    }
+  }
+
+  private func refused(statusCode: Int) async {
+    let refusal = await diagnoseRefusal(statusCode: statusCode)
+    // A connection may have opened meanwhile
+    guard sender?.ws.refusal != nil else { return }
+    self.refusal = refusal
+    onRefused?(refusal)
+  }
+
+  /// Connects without a key and reads `hub/info`
+  private func diagnoseRefusal(statusCode: Int) async -> Refusal {
+    let probe = Channel<Void>().connect(url)
+    defer { probe.stop() }
+    do {
+      let info: HubInfo = try await probe.send("hub/info", options: SendOptions(timeout: 5))
+      if let pinned = hubKey, pinned != info.key {
+        return .hubKeyChanged(pinned: pinned, current: info.key)
+      }
+      return .keyRefused
+    } catch let error as ChannelError where error.code == .refused {
+      return .hubNotAvailable
+    } catch {
+      return .refused(statusCode: statusCode)
+    }
   }
 
   /// Takes the reporter role for this client's device: describes the device on every connection and sends live
@@ -125,12 +182,17 @@ public class HubClient: @MainActor Identifiable {
     isReady = true
   }
 
-  /// Waits until `isReady`, at most `timeout` seconds. Returns whether the connection is ready.
+  private func connectionOpened() {
+    refusal = nil
+  }
+
+  /// Waits until `isReady`, at most `timeout` seconds. Returns whether the connection is ready; `false` at once
+  /// when the hub refuses the connection (see `refusal`).
   @discardableResult
   public func waitUntilReady(timeout: TimeInterval = 10) async -> Bool {
     let deadline = Date().addingTimeInterval(timeout)
     while !(isReady && isConnected) {
-      guard Date() < deadline, !Task.isCancelled else { return false }
+      guard Date() < deadline, !Task.isCancelled, sender?.ws.refusal == nil else { return false }
       try? await Task.sleep(nanoseconds: 50_000_000)
     }
     return true
@@ -140,6 +202,17 @@ public class HubClient: @MainActor Identifiable {
   public func forgetHubKey() {
     hubKeys.forget(url)
     sender?.ws.reconnect()
+  }
+
+  /// The refusal, waiting up to `timeout` seconds while disconnected for the hub to refuse the next attempt and for
+  /// the reason. `nil` when connected, or when the connection is down for another reason.
+  public func refusalReason(timeout: TimeInterval = 8) async -> Refusal? {
+    let deadline = Date().addingTimeInterval(timeout)
+    while refusal == nil, !isConnected || sender?.ws.refusal != nil, Date() < deadline, !Task.isCancelled {
+      try? await Task.sleep(nanoseconds: 50_000_000)
+    }
+    if let refusal { return refusal }
+    return sender?.ws.refusal.map { .refused(statusCode: $0.statusCode) }
   }
 
   /// Reads `hub/info`. Without a pinned key, pins it and reconnects with a v1 token (and the device certificate).
