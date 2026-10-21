@@ -104,7 +104,7 @@ public enum PairingError: Error, Hashable, Sendable, LocalizedError, CustomStrin
   case notConnected(HubClient.Refusal?)
   /// The hub that answered `hub/pair` has another key than the one pinned at connect
   case hubKeyMismatch(pinned: String, received: String)
-  /// The hub doesn't know `hub/pair` (hub-lite or an older hub-pro)
+  /// The hub doesn't pair: no `hub/pair` or no `hub/info` (an older hub)
   case unsupported
   case timeout
   case failed(String)
@@ -184,6 +184,8 @@ public extension HubClient {
     guard await waitUntilReady(timeout: 15) else {
       throw PairingError.notConnected(await refusalReason(timeout: 3))
     }
+    // Without a hub key the hub can't bind the owner to this hub or see the device certificate
+    guard hubKey != nil else { throw PairingError.unsupported }
     progress?(.verifying)
     let result: PairingResult
     do {

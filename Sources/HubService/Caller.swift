@@ -89,7 +89,7 @@ public struct HubRequest: Sendable {
 
   @TaskLocal public static var current: HubRequest?
   /// The caller of the request the current task handles. `nil` outside a handler, or when the hub didn't send one
-  /// (hub-lite, older hubs)
+  /// (older hubs)
   public static var caller: Caller? { current?.caller }
 
   init(path: String, body: AnyBody) {

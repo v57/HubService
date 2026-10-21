@@ -35,10 +35,11 @@ public enum HubAuth {
   }
 }
 
-/// `hub/info`: the hub's key and security mode. hub-lite doesn't answer it.
+/// `hub/info`: the hub's key and security mode
 public struct HubInfo: Codable, Hashable, Sendable {
   public var key: String
   public var `protocol`: Int
+  /// Sent by hub-server (formerly hub-pro) for one more release; nothing depends on it
   public var pro: Bool?
   /// `default-allow` or `default-deny`
   public var mode: String?

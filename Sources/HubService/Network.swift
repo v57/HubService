@@ -58,6 +58,7 @@ public enum InvitationBootstrapAudience: String, Codable, Sendable {
   case node
   case invitingAgent = "inviting-agent"
   case joiner
+  /// hub-server; the wire name keeps the old one
   case hubPro = "hub-pro"
 }
 
@@ -1037,7 +1038,7 @@ public struct BootstrapEndpoint: Codable, Hashable, Sendable {
 }
 
 /// Temporary point-to-point address pair assigned for the bootstrap link,
-/// distinct from the permanent overlay addresses hub-pro assigns after bind.
+/// distinct from the permanent overlay addresses hub-server assigns after bind.
 public struct BootstrapAddress: Codable, Hashable, Sendable {
   public let ipv4: String
   public let ipv6: String
@@ -1085,7 +1086,7 @@ public struct DirectBootstrapRequest: Codable, Equatable, Sendable {
 /// Signed by the inviter's invitation service key (the same key that signed
 /// the compact invitation). Bound to the request by replayId and joiner
 /// identities, it supplies the temporary point-to-point configuration the
-/// joiner needs to reach hub-pro through the inviter. Once the joiner
+/// joiner needs to reach hub-server through the inviter. Once the joiner
 /// completes `hub/net/bind` it receives permanent overlay addresses and must
 /// drop this temporary tunnel.
 public struct DirectBootstrapResponse: Codable, Hashable, Sendable {
