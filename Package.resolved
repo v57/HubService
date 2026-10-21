@@ -1,5 +1,5 @@
 {
-  "originHash" : "9498f59f44427b0d74643c771308a1a31e677edc97ddb6b9311a46b9be01d1e0",
+  "originHash" : "8865c45fe0e48d6582b60261156a92b540045ab2117c5262ec0dbc1ca2914b36",
   "pins" : [
     {
       "identity" : "channelswift",
@@ -7,7 +7,7 @@
       "location" : "https://github.com/v57/ChannelSwift.git",
       "state" : {
         "branch" : "main",
-        "revision" : "99989fb3cde3865590d9ec88371df7067237b0a8"
+        "revision" : "dd7dfe846b9c4191630750f86c770d4193845453"
       }
     }
   ],
