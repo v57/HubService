@@ -78,14 +78,23 @@ public struct HubRequestContext: Codable, Hashable, Sendable {
 ///
 /// ```swift
 /// service.post("notes/delete") { (id: String) in
-///   guard HubRequest.caller?.owner == true else { throw HubRequestError.permissionsRequired }
+///   try HubRequest.current?.requireOwner()   // throws HubError unauthorized / forbidden
 ///   …
 /// }
 /// ```
+///
+/// Cancellation is the task's: a caller that cancels or leaves cancels the handler's task (`Task.isCancelled`,
+/// `withTaskCancellationHandler`), for streams too.
 public struct HubRequest: Sendable {
   public var path: String
   public var hub: HubRequestContext?
   public var caller: Caller? { hub?.caller }
+  /// The end user a trusted gateway acts for, from `context.user`; only set when the caller is a delegate
+  /// (`HubService.delegates`) or an owner
+  public var user: DelegatedUser?
+  /// `context.user` as sent, before the delegate check
+  var claimedUser: DelegatedUser?
+  var grants: GrantAnswers?
 
   @TaskLocal public static var current: HubRequest?
   /// The caller of the request the current task handles. `nil` outside a handler, or when the hub didn't send one
@@ -94,7 +103,9 @@ public struct HubRequest: Sendable {
 
   init(path: String, body: AnyBody) {
     self.path = path
-    hub = (try? body.context(Context?.self))?.hub
+    let context = try? body.context(Context?.self)
+    hub = context?.hub
+    claimedUser = context?.user
   }
   public init(path: String, hub: HubRequestContext?) {
     self.path = path
@@ -102,11 +113,13 @@ public struct HubRequest: Sendable {
   }
   private struct Context: Decodable {
     var hub: HubRequestContext?
+    var user: DelegatedUser?
     init(from decoder: any Decoder) throws {
       let container = try decoder.container(keyedBy: CodingKeys.self)
       hub = try? container.decodeIfPresent(HubRequestContext.self, forKey: .hub)
+      user = try? container.decodeIfPresent(DelegatedUser.self, forKey: .user)
     }
-    enum CodingKeys: CodingKey { case hub }
+    enum CodingKeys: CodingKey { case hub, user }
   }
 }
 
@@ -115,6 +128,12 @@ public enum HubRequestError: Error, Hashable, Sendable, CustomStringConvertible 
   public var description: String {
     switch self {
     case .permissionsRequired: "permissions required"
+    }
+  }
+  /// Sent as `permissions required` with code `forbidden`
+  public var hubError: HubError {
+    switch self {
+    case .permissionsRequired: .forbidden()
     }
   }
 }

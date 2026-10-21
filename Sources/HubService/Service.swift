@@ -31,6 +31,23 @@ public class HubService {
   private var serviceUpdatesTask: Task<Void, Error>? {
     didSet { oldValue?.cancel() }
   }
+  /// Hub groups whose members may act for end users: a gateway in one of them (or an owner) sets `context.user`, and
+  /// handlers read it as `HubRequest.user`. From other callers `context.user` is ignored.
+  public var delegates = [String]()
+  /// Per-caller limit of every path without its own `Options.rateLimit`
+  public var rateLimit: RateLimit?
+  /// The pinned hub key: when set, a request's caller is trusted only when it names that hub. `HubClient` sets it.
+  public var trustedHubKey: (@MainActor () -> String?)?
+  /// False between `setReady(false)` and `setReady(true)`
+  public private(set) var isReady = true
+  public private(set) var isShuttingDown = false
+  /// Takes calls: ready and not shutting down
+  public var acceptsCalls: Bool { isReady && !isShuttingDown }
+  /// Calls whose handlers are running
+  public var runningCalls: Int { running.count }
+  private var running = [Int: RunningCall]()
+  private var nextCall = 0
+  private var limiters = [String: RateLimiter]()
   public init(channel: Channel<Void>) {
     self.channel = channel
   }
@@ -66,18 +83,28 @@ public class HubService {
       try await request(continuation)
     }
   }
-  /// Decodes the body and the hub context on the main actor (the decoding container isn't thread-safe), then runs
-  /// the handler with `HubRequest.current` set
+  /// Checks the request on the main actor (the decoding container isn't thread-safe): readiness, `auth`, `groups` and
+  /// the rate limit, then decodes the body. The handler runs with `HubRequest.current` set once the `permission` check
+  /// passed; a body that doesn't decode or validate fails with `invalid_input`.
   private func add<Input: Sendable>(path: String, options: Options?, decode: @escaping @Sendable @MainActor (AnyBody) throws -> Input, post: @escaping @Sendable (Input) async throws -> Encodable & Sendable) -> Self {
     if let options {
       self.options[path] = options
     }
-    channel.postApi[path] = { body, path in
-      let (request, input) = try await MainActor.run {
-        (HubRequest(path: path, body: body.body), try decode(body.body))
-      }
-      return try await HubRequest.$current.withValue(request) {
-        try await post(input)
+    let shutdown = options?.shutdown ?? .wait
+    channel.postApi[path] = { [weak self] body, path in
+      do {
+        guard let self else { throw HubError.unavailable() }
+        let (request, input) = try await MainActor.run {
+          let request = try self.admit(path: path, body: body.body, options: options)
+          return (request, Result { try decode(body.body) })
+        }
+        return try await self.track(shutdown) {
+          try await HubRequest.$current.withValue(request) {
+            try await post(Self.input(input, request: request, options: options))
+          }
+        }
+      } catch {
+        throw HubError.wire(error)
       }
     }
     return self
@@ -86,24 +113,155 @@ public class HubService {
     if let options {
       self.options[path] = options
     }
-    channel.streamApi[path] = { body, path in
-      AsyncThrowingStream { continuation in
-        Task {
+    let shutdown = options?.shutdown ?? .end
+    channel.streamApi[path] = { [weak self] body, path in
+      let service = self
+      return AsyncThrowingStream { continuation in
+        let task = Task { @Sendable in
+          var call: Int?
           do {
+            guard let self = service else { throw HubError.unavailable() }
             let (request, input) = try await MainActor.run {
-              (HubRequest(path: path, body: body.body), try decode(body.body))
+              let request = try self.admit(path: path, body: body.body, options: options)
+              return (request, Result { try decode(body.body) })
             }
+            // Ending a stream finishes it for the caller, which cancels this task
+            call = await self.begin(shutdown) { continuation.finish() }
             try await HubRequest.$current.withValue(request) {
-              try await stream(input, continuation)
+              try await stream(Self.input(input, request: request, options: options), continuation)
             }
             continuation.finish()
           } catch {
-            continuation.finish(throwing: error)
+            continuation.finish(throwing: HubError.wire(error))
           }
+          if let call { await service?.end(call) }
         }
+        // A caller that cancels or leaves cancels the handler, also while it waits between values
+        continuation.onTermination = { _ in task.cancel() }
       }
     }
     return self
+  }
+  /// A request for `path` that passed readiness, `auth`, `groups` and the rate limit
+  private func admit(path: String, body: AnyBody, options: Options?) throws -> HubRequest {
+    guard acceptsCalls else { throw HubError.unavailable() }
+    var request = HubRequest(path: path, body: body)
+    if let trustedHubKey {
+      let pinned = trustedHubKey()
+      if pinned == nil || request.hub?.hubKey != pinned { request.hub = nil }
+    }
+    if let user = request.claimedUser, let caller = request.caller, caller.key != nil,
+      caller.owner || delegates.contains(where: caller.groups.contains)
+    {
+      request.user = user
+    }
+    request.grants = GrantAnswers { [weak self] permission, caller in
+      guard let self else { throw HubError.unavailable("not connected to a hub") }
+      return try await self.checkGrant(permission, caller)
+    }
+    try request.require(options?.auth, groups: options?.groups ?? [])
+    if let limit = options?.rateLimit ?? rateLimit, limit.limit > 0 {
+      let bucket = limit.bucket ?? path
+      let limiter = limiters[bucket].flatMap { $0.options == limit ? $0 : nil } ?? RateLimiter(limit)
+      limiters[bucket] = limiter
+      try limiter.take(request.rateLimitKey)
+    }
+    return request
+  }
+  /// The handler's input once `permission` passed; decoding and `Validatable` failures are `invalid_input`
+  private nonisolated static func input<Input>(_ decoded: Result<Input, Error>, request: HubRequest, options: Options?) async throws -> Input {
+    if let permission = options?.permission { try await request.requirePermission(permission) }
+    let input: Input
+    do {
+      input = try decoded.get()
+    } catch {
+      throw HubError.invalidInput()
+    }
+    if let validatable = input as? Validatable {
+      do {
+        try validatable.validate()
+      } catch let error as HubError {
+        throw error
+      } catch {
+        throw HubError.invalidInput("\(error)")
+      }
+    }
+    return input
+  }
+  /// Runs a post as its own task, kept in `running` so `shutdown` can wait for it or cancel it
+  private nonisolated func track<T: Sendable>(_ shutdown: ShutdownMode, _ work: @escaping @Sendable () async throws -> T) async throws -> T {
+    let task = Task { try await work() }
+    let call = await begin(shutdown) { task.cancel() }
+    do {
+      let value = try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+      await end(call)
+      return value
+    } catch {
+      await end(call)
+      throw error
+    }
+  }
+  private func begin(_ shutdown: ShutdownMode, end: @escaping @Sendable () -> Void) -> Int {
+    nextCall += 1
+    running[nextCall] = RunningCall(shutdown: shutdown, end: end)
+    return nextCall
+  }
+  private func end(_ call: Int) {
+    running[call] = nil
+  }
+  /// Asks the hub whether `permission` is granted to `caller` (`hub/grant/check`)
+  private func checkGrant(_ permission: String, _ caller: Caller) async throws -> Bool {
+    guard let sender else { throw HubError.unavailable("not connected to a hub") }
+    let answer: GrantAnswer = try await sender.send("hub/grant/check", GrantCheck(path: permission, caller: GrantCheck.Subject(caller)))
+    return answer.allowed
+  }
+
+  /// Whether the hub may route new calls here. While not ready, the paths stay registered but the hub sends their
+  /// calls to other providers or keeps them waiting (`hub/service/update { draining: true }`), and calls that still
+  /// arrive fail with `unavailable`. Running calls go on.
+  public func setReady(_ ready: Bool) async {
+    guard isReady != ready else { return }
+    isReady = ready
+    await sendDraining()
+  }
+  /// Graceful shutdown: tells the hub to send no more calls, ends running streams (paths with `shutdown: .end`, the
+  /// default for streams), waits up to `timeout` seconds for the other running calls, cancels what is left and
+  /// disconnects. Returns true when every call finished in time.
+  @discardableResult
+  public func shutdown(timeout: TimeInterval = 10) async -> Bool {
+    isShuttingDown = true
+    await sendDraining()
+    for call in running.values where call.shutdown == .end { call.end() }
+    let deadline = Date().addingTimeInterval(timeout)
+    while !running.isEmpty, Date() < deadline {
+      try? await Task.sleep(nanoseconds: 10_000_000)
+    }
+    let finished = running.isEmpty
+    for call in running.values { call.end() }
+    // The last calls' responses go out before the connection closes
+    try? await Task.sleep(nanoseconds: 50_000_000)
+    sender?.stop()
+    return finished
+  }
+  /// What a supervisor or health check needs to know
+  public var health: Health {
+    let connected = sender?.ws.isConnected == true
+    let status: Health.Status = isShuttingDown ? .shuttingDown : !connected ? .disconnected : isReady ? .ready : .notReady
+    return Health(status: status, connected: connected, ready: isReady, running: running.count)
+  }
+  public struct Health: Hashable, Sendable {
+    public enum Status: String, Hashable, Sendable {
+      case ready, notReady, shuttingDown, disconnected
+    }
+    public var status: Status
+    public var connected: Bool
+    public var ready: Bool
+    /// Calls whose handlers are running
+    public var running: Int
+  }
+  private func sendDraining() async {
+    guard let sender, sender.ws.isConnected else { return }
+    let _: EmptyCodable? = try? await sender.send("hub/service/update", Draining(draining: !acceptsCalls), options: SendOptions<EmptyCodable>(timeout: 2))
   }
   public func sendServiceUpdates() {
     guard sender?.ws.isConnected == true else { return }
@@ -123,7 +281,9 @@ public class HubService {
       }
     }
     let apps = apps.filter { !disabledApps.contains($0.path) }
-    let update = HubService.Update(services: api.map { ServiceHeader(path: $0, options: options[$0]) }, apps: apps, reporter: isReporter ? true : nil)
+    // A service that isn't ready registers its paths without taking calls
+    let update = HubService.Update(services: api.map { ServiceHeader(path: $0, options: options[$0]) }, apps: apps, reporter: isReporter ? true : nil,
+      draining: acceptsCalls ? nil : true)
     if !first || !update.isEmpty {
       try await sender.send("hub/service/update", update)
     }
@@ -137,22 +297,72 @@ public class HubService {
     var services: [ServiceHeader]
     var apps: [AppHeader]
     var reporter: Bool?
-    var isEmpty: Bool { services.isEmpty && apps.isEmpty && reporter == nil }
+    var draining: Bool?
+    var isEmpty: Bool { services.isEmpty && apps.isEmpty && reporter == nil && draining == nil }
+  }
+  struct Draining: Encodable, Sendable {
+    var draining: Bool
+  }
+  struct GrantCheck: Encodable, Sendable {
+    var path: String
+    var caller: Subject
+    struct Subject: Encodable, Sendable {
+      var key: String?
+      var device: Device?
+      var via: String?
+      struct Device: Encodable, Sendable { var id: String }
+      init(_ caller: Caller) {
+        key = caller.key
+        device = caller.device.map { Device(id: $0.id) }
+        via = caller.via
+      }
+    }
+  }
+  struct GrantAnswer: Decodable, Sendable {
+    var allowed: Bool
+  }
+  /// What `shutdown` does with a running call: wait for it (posts' default) or end it at once (streams' default)
+  public enum ShutdownMode: Hashable, Sendable {
+    case wait, end
+  }
+  struct RunningCall {
+    let shutdown: ShutdownMode
+    /// Cancels a post's task, finishes a stream for its caller
+    let end: @Sendable () -> Void
   }
   
   private enum ApiPath: Hashable {
     case stream(String)
     case post(String)
   }
-  public struct Options: Hashable {
+  public struct Options: Hashable, Sendable {
+    /// Calls the hub runs at once on this provider
     public var limit: Int?
     public var permissions: Permissions?
     /// Callable by anyone when the hub denies by default
     public var isPublic: Bool
-    public init(limit: Int? = nil, permissions: Permissions? = nil, isPublic: Bool = false) {
+    /// Who may call, checked before the handler
+    public var auth: Auth?
+    /// The caller must be in one of these hub groups (owners pass)
+    public var groups: [String]
+    /// A permission an owner grants on the hub (`hub/grant/check`), under the first segment of a path this service
+    /// registers (`posts/moderate` for a service of `posts/*`); owners pass
+    public var permission: String?
+    /// Per-caller limit (`HubService.rateLimit` by default); a limit of 0 turns it off
+    public var rateLimit: RateLimit?
+    /// What `shutdown` does with a running call; `.wait` for posts and `.end` for streams by default
+    public var shutdown: ShutdownMode?
+    public init(limit: Int? = nil, permissions: Permissions? = nil, isPublic: Bool = false, auth: Auth? = nil, groups: [String] = [],
+      permission: String? = nil, rateLimit: RateLimit? = nil, shutdown: ShutdownMode? = nil)
+    {
       self.limit = limit
       self.permissions = permissions
       self.isPublic = isPublic
+      self.auth = auth
+      self.groups = groups
+      self.permission = permission
+      self.rateLimit = rateLimit
+      self.shutdown = shutdown
     }
   }
   public struct Permissions: Hashable, Encodable, Sendable {

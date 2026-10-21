@@ -76,6 +76,8 @@ public class HubClient: @MainActor Identifiable {
     }
     guard connect else { return }
     if let keyChain {
+      // Callers are trusted only from the pinned hub, as in hub-service
+      service.trustedHubKey = { [weak self] in self?.hubKey }
       let serviceKey = keyChain.publicKey()
       let issuer = device.map {
         CertificateIssuer(device: $0, service: serviceKey) { [weak self] in
@@ -324,6 +326,14 @@ public class HubClient: @MainActor Identifiable {
   }
   public func stop() {
     sender.stop()
+  }
+  /// Graceful shutdown of this client's service (`HubService.shutdown`), then disconnects. Returns true when every
+  /// running call finished within `timeout` seconds.
+  @discardableResult
+  public func shutdown(timeout: TimeInterval = 10) async -> Bool {
+    let finished = await service.shutdown(timeout: timeout)
+    stop()
+    return finished
   }
   public struct Profile: Codable, Sendable, Hashable {
     public var name: String
