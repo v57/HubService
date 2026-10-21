@@ -37,6 +37,12 @@ class ServiceApp {
         if let body = event.body {
           self.app.body = body
         }
+        if let widget = event.widget {
+          self.app.widget = widget
+        }
+        if event.warnings > 0 {
+          self.app.warnings = event.warnings
+        }
         if let data = event.data {
           self.data = data
         }

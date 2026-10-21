@@ -221,23 +221,6 @@ public class HubService {
   }
 }
 
-public struct AppHeader: Identifiable, Hashable, Codable, Sendable {
-  public var id: String { path }
-  public let type: AppType
-  public let name: String
-  public let path: String
-  public var services: Int?
-  public var isOnline: Bool { (services ?? 1) != 0 }
-  public enum AppType: String, Codable, Sendable {
-    case app
-  }
-  public init(type: AppType, name: String, path: String) {
-    self.type = type
-    self.name = name
-    self.path = path
-  }
-}
-
 struct ServiceHeader: Encodable, Sendable {
   let path: String
   let limit: Int?

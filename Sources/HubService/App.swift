@@ -13,6 +13,7 @@ public struct App: Sendable {
   public var top: Element?
   public var bottom: Element?
   public var data: [String: AnyCodable]
+  public var widget: WidgetInterface?
   public init(header: AppHeader, body: [Element], top: Element? = nil, bottom: Element? = nil, data: [String: AnyCodable] = [:]) {
     self.header = header
     self.body = body
@@ -23,13 +24,145 @@ public struct App: Sendable {
   public init(header: AppHeader, top: Element? = nil, bottom: Element? = nil, data: [String: AnyCodable] = [:], @ElementBuilder body: () -> [Element]) {
     self.init(header: header, body: body(), top: top, bottom: bottom, data: data)
   }
+  /// Makes the app a Home widget as well. Tapping the widget opens the app.
+  public func widget(sizes: [WidgetSize] = WidgetSize.allCases, body: [Element]? = nil, bodies: [WidgetSize: [Element]] = [:]) -> App {
+    var app = self
+    app.header.widget = AppHeader.Widget(sizes: sizes)
+    app.widget = WidgetInterface(body: body, sizes: bodies.filter { sizes.contains($0.key) })
+    return app
+  }
 }
 
 public extension HubService {
   func app(_ app: App) -> Self {
     apps.append(app.header)
     return stream(app.header.path) { continuation in
-      continuation.yield(AppInterface(header: app.header, body: app.body, top: app.top, bottom: app.bottom, data: app.data))
+      var interface = AppInterface(header: app.header, body: app.body, top: app.top, bottom: app.bottom, data: app.data)
+      interface.widget = app.widget
+      continuation.yield(interface)
+    }
+  }
+}
+
+/// An app in `hub/status/badges` and `hub/service/update`. Unknown fields are ignored, so newer kinds of app still
+/// list in older clients; `widget` and `web` say how newer clients show it.
+public struct AppHeader: Identifiable, Hashable, Codable, Sendable {
+  public var id: String { path }
+  public let type: AppType
+  public let name: String
+  public let path: String
+  /// SF Symbol name
+  public var icon: String?
+  /// The app is also a Home widget
+  public var widget: Widget?
+  /// The app is a web page
+  public var web: Web?
+  public var services: Int?
+  public var isOnline: Bool { (services ?? 1) != 0 }
+  public enum AppType: String, Codable, Sendable {
+    case app
+    /// Unknown types read as apps
+    public init(from decoder: any Decoder) throws {
+      self = AppType(rawValue: try decoder.decode()) ?? .app
+    }
+  }
+  public struct Widget: Hashable, Codable, Sendable {
+    /// Supported sizes, the first is the default. Unknown sizes are dropped.
+    public var sizes: [WidgetSize]
+    public init(sizes: [WidgetSize]) {
+      self.sizes = sizes
+    }
+    enum CodingKeys: CodingKey {
+      case sizes
+    }
+    public init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      let sizes: [String] = container.decodeIfPresent(.sizes, [])
+      self.sizes = sizes.compactMap(WidgetSize.init(rawValue:))
+      if self.sizes.isEmpty { self.sizes = [.x11] }
+    }
+    public var defaultSize: WidgetSize { sizes.first ?? .x11 }
+  }
+  public struct Web: Hashable, Codable, Sendable {
+    /// `{hubHost}` is replaced by the host the client uses for the hub
+    public var url: String
+    /// Other origins the page may navigate to without asking
+    public var origins: [String]?
+    /// The client fetches a page token from `<path>/token`
+    public var token: Bool?
+    public init(url: String, origins: [String]? = nil, token: Bool? = nil) {
+      self.url = url
+      self.origins = origins
+      self.token = token
+    }
+    /// The page URL for a hub at `hubHost`
+    public func url(hubHost: String?) -> URL? {
+      URL(string: url.replacingOccurrences(of: "{hubHost}", with: hubHost ?? "localhost"))
+    }
+  }
+  public init(type: AppType, name: String, path: String, icon: String? = nil, widget: Widget? = nil, web: Web? = nil) {
+    self.type = type
+    self.name = name
+    self.path = path
+    self.icon = icon
+    self.widget = widget
+    self.web = web
+  }
+  enum CodingKeys: CodingKey {
+    case type, name, path, icon, widget, web, services
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: CodingKeys.self)
+    type = container.decodeIfPresent(.type, .app)
+    name = try container.decode(.name)
+    path = try container.decode(.path)
+    icon = container.decodeIfPresent(.icon)
+    widget = container.decodeIfPresent(.widget)
+    web = container.decodeIfPresent(.web)
+    services = container.decodeIfPresent(.services)
+  }
+}
+
+/// Home tile sizes, width x height
+public enum WidgetSize: String, Codable, CaseIterable, Hashable, Sendable {
+  case x11 = "1x1", x12 = "1x2", x21 = "2x1", x22 = "2x2"
+  public var width: Int { self == .x21 || self == .x22 ? 2 : 1 }
+  public var height: Int { self == .x12 || self == .x22 ? 2 : 1 }
+}
+
+/// Widget content in the app stream: one body per size, or `body` for sizes without their own
+public struct WidgetInterface: Codable, Sendable {
+  public var body: [Element]?
+  public var sizes: [WidgetSize: [Element]]
+  public init(body: [Element]? = nil, sizes: [WidgetSize: [Element]] = [:]) {
+    self.body = body
+    self.sizes = sizes
+  }
+  public subscript(size: WidgetSize) -> [Element]? {
+    sizes[size] ?? body
+  }
+  struct Key: CodingKey {
+    var stringValue: String
+    var intValue: Int? { nil }
+    init(stringValue: String) { self.stringValue = stringValue }
+    init?(intValue: Int) { nil }
+  }
+  public init(from decoder: any Decoder) throws {
+    let container = try decoder.container(keyedBy: Key.self)
+    body = container.decodeLossyIfPresent(Key(stringValue: "body"))
+    var sizes = [WidgetSize: [Element]]()
+    for size in WidgetSize.allCases {
+      if let elements: [Element] = container.decodeLossyIfPresent(Key(stringValue: size.rawValue)) {
+        sizes[size] = elements
+      }
+    }
+    self.sizes = sizes
+  }
+  public func encode(to encoder: any Encoder) throws {
+    var container = encoder.container(keyedBy: Key.self)
+    try container.encodeIfPresent(body, forKey: Key(stringValue: "body"))
+    for (size, elements) in sizes {
+      try container.encode(elements, forKey: Key(stringValue: size.rawValue))
     }
   }
 }
@@ -40,9 +173,10 @@ public struct AppInterface: Codable, Sendable {
   public var top: Element?
   public var bottom: Element?
   public var data: [String: AnyCodable]?
+  public var widget: WidgetInterface?
   public var warnings: Int
   enum CodingKeys: CodingKey {
-    case header, body, top, bottom, data
+    case header, body, top, bottom, data, widget
   }
   
   public init(header: AppHeader, body: [Element], top: Element?, bottom: Element?, data: [String: AnyCodable]?) {
@@ -53,12 +187,13 @@ public struct AppInterface: Codable, Sendable {
     self.data = data
     self.warnings = 0
   }
-  public init(header: AppHeader? = nil, top: Element? = nil, bottom: Element? = nil, data: [String: AnyCodable]? = nil, @ElementBuilder body: () -> [Element]) {
+  public init(header: AppHeader? = nil, top: Element? = nil, bottom: Element? = nil, data: [String: AnyCodable]? = nil, widget: WidgetInterface? = nil, @ElementBuilder body: () -> [Element]) {
     self.header = header
     self.top = top
     self.bottom = bottom
     self.body = body()
     self.data = data
+    self.widget = widget
     self.warnings = 0
   }
   public init() {
@@ -66,14 +201,15 @@ public struct AppInterface: Codable, Sendable {
   }
   public init(from decoder: any Decoder) throws {
     let counter = DecodingWarnings.Counter()
-    (header, body, top, bottom, data, warnings) = try DecodingWarnings.$counter.withValue(counter) {
+    (header, body, top, bottom, data, widget, warnings) = try DecodingWarnings.$counter.withValue(counter) {
       let container = try decoder.container(keyedBy: CodingKeys.self)
       let header: AppHeader? = container.decodeIfPresent(.header)
       let body: [Element]? = container.decodeLossyIfPresent(.body)
       let top: Element? = container.decodeIfPresent(.top)
       let bottom: Element? = container.decodeIfPresent(.bottom)
       let data: [String: AnyCodable]? = container.decodeIfPresent(.data)
-      return (header, body, top, bottom, data, counter.count)
+      let widget: WidgetInterface? = container.decodeIfPresent(.widget)
+      return (header, body, top, bottom, data, widget, counter.count)
     }
   }
   public func encode(to encoder: any Encoder) throws {
@@ -83,13 +219,14 @@ public struct AppInterface: Codable, Sendable {
     try container.encodeIfPresent(top, forKey: .top)
     try container.encodeIfPresent(bottom, forKey: .bottom)
     try container.encodeIfPresent(data, forKey: .data)
+    try container.encodeIfPresent(widget, forKey: .widget)
   }
 }
 
 public enum ElementType: String, Codable {
-  case text, progress // readonly
-  case textField, button, slider, picker, files, fileOperation // actions
-  case list, cell, hstack, vstack, zstack // containers
+  case text, progress, markdown, image, badge, divider, stat, gauge, chart, table // readonly
+  case textField, button, slider, picker, files, fileOperation, link, sheet // actions
+  case list, cell, hstack, vstack, zstack, grid, section, tabs // containers
   case spacer // layout
 }
 
@@ -118,6 +255,19 @@ public enum Element: Identifiable, Codable, Sendable {
     case .zstack(let value): return value
     case .spacer(let value): return value
     case .progress(let value): return value
+    case .markdown(let value): return value
+    case .image(let value): return value
+    case .badge(let value): return value
+    case .divider(let value): return value
+    case .link(let value): return value
+    case .stat(let value): return value
+    case .gauge(let value): return value
+    case .chart(let value): return value
+    case .table(let value): return value
+    case .grid(let value): return value
+    case .section(let value): return value
+    case .tabs(let value): return value
+    case .sheet(let value): return value
     }
   }
   case text(Text)
@@ -134,6 +284,19 @@ public enum Element: Identifiable, Codable, Sendable {
   case zstack(ZStack)
   case spacer(Spacer)
   case progress(Progress)
+  case markdown(Markdown)
+  case image(Image)
+  case badge(Badge)
+  case divider(Divider)
+  case link(Link)
+  case stat(Stat)
+  case gauge(Gauge)
+  case chart(Chart)
+  case table(Table)
+  case grid(Grid)
+  case section(Section)
+  case tabs(Tabs)
+  case sheet(Sheet)
   enum CodingKeys: CodingKey {
     case type
   }
@@ -174,6 +337,32 @@ public enum Element: Identifiable, Codable, Sendable {
         self = try .spacer(Spacer(from: decoder))
       case .progress:
         self = try .progress(Progress(from: decoder))
+      case .markdown:
+        self = try .markdown(Markdown(from: decoder))
+      case .image:
+        self = try .image(Image(from: decoder))
+      case .badge:
+        self = try .badge(Badge(from: decoder))
+      case .divider:
+        self = .divider(Divider())
+      case .link:
+        self = try .link(Link(from: decoder))
+      case .stat:
+        self = try .stat(Stat(from: decoder))
+      case .gauge:
+        self = try .gauge(Gauge(from: decoder))
+      case .chart:
+        self = try .chart(Chart(from: decoder))
+      case .table:
+        self = try .table(Table(from: decoder))
+      case .grid:
+        self = try .grid(Grid(from: decoder))
+      case .section:
+        self = try .section(Section(from: decoder))
+      case .tabs:
+        self = try .tabs(Tabs(from: decoder))
+      case .sheet:
+        self = try .sheet(Sheet(from: decoder))
       }
     }
   }
@@ -188,18 +377,33 @@ public enum Element: Identifiable, Codable, Sendable {
     public let id = UUID().uuidString
     public let value: String
     public let secondary: Bool
+    public let style: TextStyle?
+    public let color: String?
     enum CodingKeys: CodingKey {
       case value
       case secondary
+      case style
+      case color
     }
-    public init(value: String, secondary: Bool = false) {
+    public init(value: String, secondary: Bool = false, style: TextStyle? = nil, color: String? = nil) {
       self.value = value
       self.secondary = secondary
+      self.style = style
+      self.color = color
     }
     public init(from decoder: any Decoder) throws {
       let container = try decoder.container(keyedBy: CodingKeys.self)
       self.value = try container.decode(.value)
       self.secondary = container.decodeIfPresent(.secondary, false)
+      self.style = container.decodeIfPresent(.style)
+      self.color = container.decodeIfPresent(.color)
+    }
+    public func encode(to encoder: any Encoder) throws {
+      var container = encoder.container(keyedBy: CodingKeys.self)
+      try container.encode(value, forKey: .value)
+      try container.encodeIfPresent(secondary, forKey: .secondary, defaultValue: false)
+      try container.encodeIfPresent(style, forKey: .style)
+      try container.encodeIfPresent(color, forKey: .color)
     }
   }
   public struct Progress: ElementProtocol, Identifiable, Codable, Sendable {
@@ -247,7 +451,7 @@ public enum Element: Identifiable, Codable, Sendable {
       let container = try decoder.container(keyedBy: CodingKeys.self)
       self.value = try container.decode(.value)
       self.placeholder = container.decodeIfPresent(.placeholder, "")
-      self.action = try container.decode(.action)
+      self.action = container.decodeIfPresent(.action)
     }
   }
   public struct Slider: ElementProtocol, Identifiable, Codable, Sendable {
@@ -294,13 +498,26 @@ public enum Element: Identifiable, Codable, Sendable {
     public let id = UUID().uuidString
     public let title: String
     public let action: Action
+    public let icon: String?
+    public let style: ButtonStyle?
+    public let confirm: Confirmation?
     enum CodingKeys: CodingKey {
-      case title
-      case action
+      case title, action, icon, style, confirm
     }
-    public init(title: String, action: Action) {
+    public init(title: String, action: Action, icon: String? = nil, style: ButtonStyle? = nil, confirm: Confirmation? = nil) {
       self.title = title
       self.action = action
+      self.icon = icon
+      self.style = style
+      self.confirm = confirm
+    }
+    public init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      title = try container.decode(.title)
+      action = try container.decode(.action)
+      icon = container.decodeIfPresent(.icon)
+      style = container.decodeIfPresent(.style)
+      confirm = container.decodeIfPresent(.confirm)
     }
   }
   public final class List: ElementProtocol, Identifiable, Codable, Sendable {
@@ -448,10 +665,16 @@ public enum Element: Identifiable, Codable, Sendable {
     enum CodingKeys: CodingKey {
       case path, body, output
     }
-    public init(path: String, body: ActionBody, output: ActionBody? = nil) {
+    public init(path: String, body: ActionBody = .void, output: ActionBody? = nil) {
       self.path = path
       self.body = body
       self.output = output
+    }
+    public init(from decoder: any Decoder) throws {
+      let container = try decoder.container(keyedBy: CodingKeys.self)
+      path = try container.decode(.path)
+      body = container.decodeIfPresent(.body, .void)
+      output = container.decodeIfPresent(.output)
     }
   }
   public enum ActionBody: Codable, Sendable {

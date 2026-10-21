@@ -47,7 +47,8 @@ public struct HubAppView: View {
                 element
               }
             }
-          }.frame(minHeight: view.size.height)
+          // Top aligned, so pages don't jump when their content changes height (tabs, live lists)
+          }.frame(maxWidth: .infinity, minHeight: view.size.height, alignment: .top)
         }.safeAreaInset(edge: .bottom) {
           if app.app.warnings > 0 {
             Text("Service is using newer interface. Some elements will not be displayed properly").secondary()
@@ -148,8 +149,8 @@ extension Element: View {
     switch self {
     case .text(let a): TextView(value: a)
     case .textField(let a): TextFieldView(value: a)
-    case .button(let a): ButtonView(value: a)
-    case .list(let a): ListView(value: a)
+    case .button, .list, .markdown, .image, .badge, .divider, .link, .stat, .gauge, .chart, .table, .grid, .section, .tabs, .sheet:
+      DashboardElementView(element: self)
     case .picker(let a): PickerView(value: a)
     case .cell(let a): CellView(value: a)
     case .files(let a): FilesView(value: a)
@@ -170,6 +171,10 @@ extension Element: View {
       if let text = state.translate(value.value) {
         if value.secondary {
           SwiftUIText(text).textSelection().secondary()
+            .font(value.style?.font).foregroundStyle(state.color(value.color) ?? .secondary)
+        } else if value.style != nil || value.color != nil {
+          SwiftUIText(text).textSelection()
+            .font(value.style?.font).foregroundStyle(state.color(value.color) ?? .primary)
         } else {
           SwiftUIText(text).textSelection()
         }
@@ -204,7 +209,7 @@ extension Element: View {
   }
   struct UnknownView: View {
     var body: some View {
-      Image(systemName: "questionmark.circle.dashed")
+      SwiftUIImage(systemName: "questionmark.circle.dashed")
         .foregroundStyle(.tertiary)
     }
   }
@@ -286,30 +291,6 @@ extension Element: View {
         SwiftUISlider(value: v, in: range).frame(maxWidth: 150)
       }
 #endif
-    }
-  }
-  struct ButtonView: View {
-    let value: Button
-    let state = AppState()
-    var body: some View {
-      if let title = state.translate(value.title) {
-        AsyncButton(title) {
-          try await state.perform(action: value.action)
-        }
-      }
-    }
-  }
-  struct ListView: View {
-    let value: List
-    @Environment(ServiceApp.self) var app
-    var body: some View {
-      if let list = app.lists[value.data] {
-        SwiftUIForEach(list) { data in
-          SwiftUIHStack {
-            value.content
-          }.environment(data)
-        }
-      }
     }
   }
   struct CellView: View {
