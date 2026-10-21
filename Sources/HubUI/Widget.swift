@@ -21,14 +21,17 @@ public struct HubWidgetView: View {
     self.size = size
   }
   public var body: some View {
-    VStack(alignment: .leading, spacing: 8) {
-      if let body = app.app.widget?[size] ?? app.app.body {
-        ForEach(body) { $0 }
-      } else {
-        ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
-      }
-    }.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-      .clipped()
+    // The tile's size comes from Home's grid: content taller than the tile (a long list) is cut off, never drawn
+    // over the next tiles. A flexible frame would grow to the content, so lay it over a view that takes the tile's size
+    Color.clear.overlay(alignment: .topLeading) {
+      VStack(alignment: .leading, spacing: 8) {
+        if let body = app.app.widget?[size] ?? app.app.body {
+          ForEach(body) { $0 }
+        } else {
+          ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+      }.frame(maxWidth: .infinity, alignment: .topLeading)
+    }.clipped()
       .environment(app)
       .environment(\.hubWidgetSize, size)
       .task(id: Subscription(client: ObjectIdentifier(hub), path: header.path)) {
