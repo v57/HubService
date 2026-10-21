@@ -11,6 +11,7 @@ public enum AnyCodable: Codable, Hashable, Sendable {
   case dictionary([String: AnyCodable])
   case array([AnyCodable])
   case string(String)
+  case bool(Bool)
   case int(Int)
   case double(Double)
   case date(Date)
@@ -23,6 +24,9 @@ public enum AnyCodable: Codable, Hashable, Sendable {
       self = .array(value)
     } else if let value = try? container.decode(String.self) {
       self = .string(value)
+    } else if let value = try? container.decode(Bool.self) {
+      // Before numbers: JSON true/false only decode as Bool
+      self = .bool(value)
     } else if let value = try? container.decode(Int.self) {
       self = .int(value)
     } else if let value = try? container.decode(Double.self) {
@@ -43,13 +47,15 @@ public enum AnyCodable: Codable, Hashable, Sendable {
       try container.encode(value)
     case .string(let value):
       try container.encode(value)
+    case .bool(let value):
+      try container.encode(value)
     case .int(let value):
       try container.encode(value)
     case .double(let value):
       try container.encode(value)
     case .date(let value):
       try container.encode(value)
-    case .void: break
+    case .void: try container.encodeNil()
     }
   }
 }
@@ -87,6 +93,7 @@ public extension AnyCodable {
       switch self {
       case .dictionary, .array, .void: nil
       case .string(let string): string
+      case .bool(let bool): String(bool)
       case .int(let int): String(int)
       case .double(let double): String(double)
       case .date(let date): date.formatted()
@@ -102,6 +109,7 @@ public extension AnyCodable {
       switch self {
       case .dictionary, .array, .date, .void: nil
       case .string(let string): Int(string)
+      case .bool(let bool): bool ? 1 : 0
       case .int(let int): int
       case .double(let double): Int(double)
       }
@@ -116,12 +124,27 @@ public extension AnyCodable {
       switch self {
       case .dictionary, .array, .date, .void: nil
       case .string(let string): Double(string)
+      case .bool(let bool): bool ? 1 : 0
       case .int(let int): Double(int)
       case .double(let double): double
       }
     } set {
       if let newValue {
         self = .double(newValue)
+      }
+    }
+  }
+  var bool: Bool? {
+    get {
+      switch self {
+      case .bool(let bool): bool
+      case .int(let int): int != 0
+      case .string(let string): Bool(string)
+      default: nil
+      }
+    } set {
+      if let newValue {
+        self = .bool(newValue)
       }
     }
   }
