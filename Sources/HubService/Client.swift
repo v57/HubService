@@ -250,6 +250,9 @@ public class HubClient: @MainActor Identifiable {
   public func send<Body: Encodable, Output: Decodable>(_ path: String, _ body: Body?) async throws -> Output {
     try await sender.send(path, body)
   }
+  public func send<Body: Encodable, Output: Decodable>(_ path: String, _ body: Body?, timeout: TimeInterval) async throws -> Output {
+    try await sender.send(path, body, options: SendOptions(timeout: timeout))
+  }
   // With context
   public func send<Context: Encodable & Sendable, Output: Decodable>(_ path: String, context: Context?) async throws -> Output {
     try await sender.send(path, options: SendOptions(context: context))
