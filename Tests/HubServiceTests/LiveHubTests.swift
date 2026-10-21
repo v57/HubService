@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import HubService
 
-/// Runs against a real hub-pro: `HUB_LIVE_URL=ws://127.0.0.1:1997 swift test --filter LiveHub`
+/// Runs against a real hub-server: `HUB_LIVE_URL=ws://127.0.0.1:1997 swift test --filter LiveHub`
 @Suite("Device layer: live hub", .enabled(if: ProcessInfo.processInfo.environment["HUB_LIVE_URL"] != nil))
 @MainActor
 struct LiveHubTests {
