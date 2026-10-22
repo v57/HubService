@@ -461,3 +461,12 @@ struct UploadingFile: Hashable {
   let target: String
   let content: URL
 }
+
+/// Uploads files to a hub's storage (`s3/write`) through HubUI's upload queue, for clients that draw their own file
+/// browser
+@available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+public enum HubStorageUpload {
+  @MainActor public static func upload(files: [URL], directory: String, to hub: HubClient, context: HubContext? = nil) {
+    _ = UploadManager.main.upload(files: files, directory: directory, to: hub, context: context)
+  }
+}

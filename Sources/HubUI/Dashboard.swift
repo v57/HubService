@@ -639,11 +639,40 @@ struct HubSectionView: View {
       }
     }.frame(maxWidth: .infinity, alignment: .leading)
       .padding(value.style == .card ? 14 : 0)
-      .background {
-        if value.style == .card {
-          RoundedRectangle(cornerRadius: 16).fill(Color.gray.opacity(0.1))
-        }
+      .modifier(HubCardModifier(isCard: value.style == .card))
+  }
+}
+
+/// A card's ground: the client's own (`hubCardStyle`) or a soft gray rounded rectangle
+@available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+struct HubCardModifier: ViewModifier {
+  let isCard: Bool
+  @Environment(\.hubCardStyle) private var cardStyle
+  func body(content: Content) -> some View {
+    if !isCard {
+      content
+    } else if let cardStyle {
+      cardStyle(AnyView(content))
+    } else {
+      content.background {
+        RoundedRectangle(cornerRadius: 16).fill(Color.gray.opacity(0.1))
       }
+    }
+  }
+}
+
+@available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+extension EnvironmentValues {
+  /// How an app's cards (sections with the card style, file panels) draw their ground, so a client draws them as
+  /// its own cards; `nil` draws a soft gray rounded rectangle.
+  @Entry public var hubCardStyle: (@MainActor (AnyView) -> AnyView)? = nil
+}
+
+@available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
+extension View {
+  /// Draws the cards of the service apps inside with `style`: `.hubCardStyle { $0.background(.thinMaterial) }`
+  public func hubCardStyle<Card: View>(_ style: @escaping @MainActor (AnyView) -> Card) -> some View {
+    environment(\.hubCardStyle, { AnyView(style($0)) })
   }
 }
 
