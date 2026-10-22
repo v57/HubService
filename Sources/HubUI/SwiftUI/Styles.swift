@@ -5,11 +5,7 @@
 //  Created by Linux on 04.04.26.
 //
 
-#if canImport(SwiftCrossUI)
-import SwiftCrossUI
-#else
 import SwiftUI
-#endif
 
 var interfaceScale: Double {
 #if os(tvOS)

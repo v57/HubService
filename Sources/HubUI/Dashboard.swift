@@ -6,7 +6,6 @@
 //  They live outside `extension Element` so SwiftUI names aren't shadowed by the element models.
 //
 
-#if !canImport(SwiftCrossUI)
 import SwiftUI
 import HubService
 #if canImport(Charts)
@@ -832,4 +831,3 @@ struct DashboardElementView: View {
     }
   }
 }
-#endif

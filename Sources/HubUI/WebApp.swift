@@ -8,7 +8,7 @@
 //  the hub as the user, only for paths under `<app path>/`.
 //
 
-#if canImport(WebKit) && !canImport(SwiftCrossUI)
+#if canImport(WebKit)
 import SwiftUI
 import WebKit
 import HubService

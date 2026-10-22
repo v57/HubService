@@ -75,12 +75,7 @@ public struct HubContext: Codable, Sendable, Hashable {
   }
 }
 
-#if canImport(SwiftCrossUI)
-import SwiftCrossUI
-extension HubClient: SwiftCrossUI.ObservableObject { }
-#else
 extension HubClient: ObservableObject { }
-#endif
 
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 @MainActor

@@ -5,11 +5,7 @@
 //  Created by Dmitry Kozlov on 2/6/25.
 //
 
-#if canImport(SwiftCrossUI)
-import SwiftCrossUI
-#else
 import SwiftUI
-#endif
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
 struct AsyncButton<Label: View & SendableMetatype>: View {

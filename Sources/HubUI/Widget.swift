@@ -5,7 +5,6 @@
 //  A service app shown as a Home widget (Docs/Apps/ui.md, "Widgets").
 //
 
-#if !canImport(SwiftCrossUI)
 import SwiftUI
 import HubService
 
@@ -49,4 +48,3 @@ public struct HubWidgetView: View {
     let path: String
   }
 }
-#endif

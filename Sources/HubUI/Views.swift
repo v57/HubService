@@ -9,11 +9,7 @@ import Foundation
 #if canImport(Observation)
 import Observation
 #endif
-#if canImport(SwiftCrossUI)
-import SwiftCrossUI
-#else
 import SwiftUI
-#endif
 import HubService
 
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
@@ -529,9 +525,5 @@ struct LargeProgressView: View {
 }
 
 private extension Double {
-#if canImport(SwiftCrossUI)
-  var cg: Double { self }
-#else
   var cg: CGFloat { CGFloat(self) }
-#endif
 }

@@ -9,11 +9,7 @@ import Foundation
 #if canImport(Observation)
 import Observation
 #endif
-#if canImport(SwiftCrossUI)
-import SwiftCrossUI
-#else
 import SwiftUI
-#endif
 import HubService
 
 /// Runs `hub/pair` and keeps its state for a view. The hub verifies one code at a time and at least a second each,
@@ -75,14 +71,10 @@ public struct PairingStatusView: View {
     case .connecting:
       progress("Connecting to the hub…")
     case .verifying:
-#if canImport(SwiftCrossUI)
-      progress("Checking the code…")
-#else
       TimelineView(.periodic(from: verifyingSince ?? .now, by: 1)) { context in
         let waited = verifyingSince.map { context.date.timeIntervalSince($0) } ?? 0
         progress(waited < 4 ? "Checking the code…" : "Checking the code… the hub checks one code at a time")
       }
-#endif
     case .paired(let result):
       Label(result.name.map { "Paired with \($0). This device is an owner." } ?? "Paired. This device is an owner.",
             systemImage: "checkmark.circle.fill")
@@ -94,13 +86,9 @@ public struct PairingStatusView: View {
   }
   @ViewBuilder
   func progress(_ text: String) -> some View {
-#if canImport(SwiftCrossUI)
-    Text(text)
-#else
     HStack(spacing: 6) {
       ProgressView().controlSize(.small)
       Text(text)
     }.foregroundStyle(.secondary)
-#endif
   }
 }

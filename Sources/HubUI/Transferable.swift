@@ -5,11 +5,7 @@
 //  Created by Linux on 04.04.26.
 //
 
-#if canImport(SwiftCrossUI)
-import SwiftCrossUI
-#else
 import SwiftUI
-#endif
 import HubService
 
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)

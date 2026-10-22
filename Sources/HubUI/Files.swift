@@ -5,11 +5,7 @@
 //  Created by Linux on 13.07.25.
 //
 
-#if canImport(SwiftCrossUI)
-import SwiftCrossUI
-#else
 import SwiftUI
-#endif
 import Foundation
 import HubService
 
@@ -352,7 +348,7 @@ public extension View {
 }
 public extension String {
   func copyToClipboard() {
-    #if os(macOS) && !canImport(SwiftCrossUI)
+    #if os(macOS)
     let pasteboard = NSPasteboard.general
     pasteboard.clearContents()
     pasteboard.setString(self, forType: .string)

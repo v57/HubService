@@ -5,11 +5,7 @@
 //  Created by Linux on 23.06.26.
 //
 
-#if canImport(SwiftCrossUI)
-import SwiftCrossUI
-#else
 import SwiftUI
-#endif
 
 typealias SwiftUIPicker = Picker
 @available(iOS 14.0, tvOS 14.0, macOS 11.0, watchOS 7.0, *)
