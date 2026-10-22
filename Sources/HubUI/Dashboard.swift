@@ -151,7 +151,7 @@ struct HubMarkdownView: View {
   var body: some View {
     if let text = state.text(value.value) {
       let attributed = (try? AttributedString(markdown: text, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(text)
-      Text(attributed).textSelection(.enabled)
+      Text(attributed).textSelection()
         .frame(maxWidth: .infinity, alignment: .leading)
     }
   }
