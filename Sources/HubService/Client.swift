@@ -30,6 +30,8 @@ public class HubClient: @MainActor Identifiable {
   public let hubKeys: HubKeyPins
   /// The pinned key of this hub, learned from `hub/info` or supplied up front
   public var hubKey: String? { hubKeys.key(for: url) }
+  /// The address the client is connected or connecting to: `url`, or one of `Options.alternateURLs`
+  public var currentURL: URL { sender?.ws.currentURL ?? url }
   /// `nil` when the client connects without a device
   public let device: DeviceIdentity?
   /// Set when the hub answered `hub/info`
@@ -57,11 +59,16 @@ public class HubClient: @MainActor Identifiable {
     /// The instance name in the certificate, unique per device: `s3-local/Backup Disk`. Defaults to the profile
     /// name, else the working directory's name
     public var instance: String?
-    public init(hubKey: String? = nil, hubKeys: HubKeyPins? = nil, device: DeviceIdentity? = nil, instance: String? = nil) {
+    /// Other addresses of the same hub, tried in turn when the hub's address doesn't answer (see Channel's
+    /// `ClientOptions.alternateURLs`). The hub key stays the one pinned for the hub's address, so another server
+    /// answering there can't take the hub's place.
+    public var alternateURLs: (@MainActor () async -> [URL])?
+    public init(hubKey: String? = nil, hubKeys: HubKeyPins? = nil, device: DeviceIdentity? = nil, instance: String? = nil, alternateURLs: (@MainActor () async -> [URL])? = nil) {
       self.hubKey = hubKey
       self.hubKeys = hubKeys
       self.device = device
       self.instance = instance
+      self.alternateURLs = alternateURLs
     }
   }
   public init(_ url: URL = HubClient.local, keyChain: KeyChain? = nil, connect: Bool = true, options: Options = Options()) {
@@ -100,9 +107,9 @@ public class HubClient: @MainActor Identifiable {
         await setReady()
         await reporter?.connected(self)
         try await service.network.didConnect(sender)
-      }))
+      }, alternateURLs: options.alternateURLs))
     } else {
-      sender = channel.connect(url)
+      sender = channel.connect(url, options: ClientOptions(alternateURLs: options.alternateURLs))
     }
     service.sender = sender
     sender.ws.onRefused = { [weak self] refusal in
