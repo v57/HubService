@@ -90,10 +90,14 @@ public struct AppHeader: Identifiable, Hashable, Codable, Sendable {
     public var origins: [String]?
     /// The client fetches a page token from `<path>/token`
     public var token: Bool?
-    public init(url: String, origins: [String]? = nil, token: Bool? = nil) {
+    /// The network share the page is served from: the hub's link to its machine opens its port, so the page loads
+    /// over the Hub Network too
+    public var share: String?
+    public init(url: String, origins: [String]? = nil, token: Bool? = nil, share: String? = nil) {
       self.url = url
       self.origins = origins
       self.token = token
+      self.share = share
     }
     /// The page URL for a hub at `hubHost`
     public func url(hubHost: String?) -> URL? {

@@ -88,12 +88,12 @@ struct AppInterfaceTests {
     let headers = try JSONDecoder().decode([AppHeader].self, from: Data("""
     [{"type": "app", "name": "A", "path": "a"},
      {"type": "app", "name": "W", "path": "w", "widget": {"sizes": ["2x1", "3x3", "1x1"]}, "services": 2},
-     {"type": "app", "name": "Web", "path": "web", "icon": "globe", "web": {"url": "http://{hubHost}:8080/", "token": true}},
+     {"type": "app", "name": "Web", "path": "web", "icon": "globe", "web": {"url": "http://{hubHost}:8080/", "token": true, "share": "web"}},
      {"type": "kiosk", "name": "K", "path": "k", "widget": {"sizes": ["9x9"]}, "web": 3}]
     """.utf8))
     #expect(headers.count == 4)
     #expect(headers[1].widget?.sizes == [.x21, .x11] && headers[1].widget?.defaultSize == .x21)
-    #expect(headers[2].web?.token == true && headers[2].icon == "globe")
+    #expect(headers[2].web?.token == true && headers[2].icon == "globe" && headers[2].web?.share == "web")
     #expect(headers[2].web?.url(hubHost: "10.0.0.2")?.absoluteString == "http://10.0.0.2:8080/")
     // The host comes from the address the client is connected on, such as a Hub Network one
     #expect(headers[2].web?.url(hub: URL(string: "ws://100.96.0.2:1997")!)?.absoluteString == "http://100.96.0.2:8080/")
