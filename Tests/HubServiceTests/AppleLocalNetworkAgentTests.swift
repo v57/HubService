@@ -4,6 +4,13 @@ import Testing
 #if canImport(Network)
 @Suite("Apple local-agent IPC")
 struct AppleLocalNetworkAgentTests {
+  @Test("the socket is the environment's, the system agent's, then the Hub app's in the home folder")
+  func socketPath() {
+    #expect(AppleLocalNetworkAgent.socketPath(environment: ["HUB_NET_AGENT_SOCKET": "/tmp/a.sock", "HOME": "/Users/me"], exists: { _ in true }) == "/tmp/a.sock")
+    #expect(AppleLocalNetworkAgent.socketPath(environment: ["HOME": "/Users/me"], exists: { _ in true }) == "/var/run/hub-net/agent.sock")
+    #expect(AppleLocalNetworkAgent.socketPath(environment: ["HOME": "/Users/me"], exists: { _ in false }) == "/Users/me/.hub-net/agent.sock")
+  }
+
   @Test("unavailable socket returns a diagnosable transport error")
   func unavailableAgent() async {
     let agent = AppleLocalNetworkAgent(
