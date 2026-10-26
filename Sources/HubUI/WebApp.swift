@@ -43,7 +43,7 @@ public struct HubWebAppView: View {
       }
     }.navigationTitle(header.name)
       .task(id: HubTask(id: hub.id, path: header.path, context: HubContext())) {
-        guard let web = header.web, let url = web.url(hubHost: hub.url.host()) else { return }
+        guard let web = header.web, let url = web.url(hub: hub.currentURL) else { return }
         page = HubWebPage(header: header, url: url, origins: web.origins ?? [], hub: hub)
       }
   }

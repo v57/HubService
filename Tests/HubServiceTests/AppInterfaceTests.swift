@@ -95,6 +95,9 @@ struct AppInterfaceTests {
     #expect(headers[1].widget?.sizes == [.x21, .x11] && headers[1].widget?.defaultSize == .x21)
     #expect(headers[2].web?.token == true && headers[2].icon == "globe")
     #expect(headers[2].web?.url(hubHost: "10.0.0.2")?.absoluteString == "http://10.0.0.2:8080/")
+    // The host comes from the address the client is connected on, such as a Hub Network one
+    #expect(headers[2].web?.url(hub: URL(string: "ws://100.96.0.2:1997")!)?.absoluteString == "http://100.96.0.2:8080/")
+    #expect(headers[2].web?.url(hub: URL(string: "ws://[fd00::2]:1997")!)?.absoluteString == "http://[fd00::2]:8080/")
     #expect(headers[3].type == .app && headers[3].widget?.sizes == [.x11] && headers[3].web == nil)
   }
 

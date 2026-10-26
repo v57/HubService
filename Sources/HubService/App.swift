@@ -99,6 +99,12 @@ public struct AppHeader: Identifiable, Hashable, Codable, Sendable {
     public func url(hubHost: String?) -> URL? {
       URL(string: url.replacingOccurrences(of: "{hubHost}", with: hubHost ?? "localhost"))
     }
+    /// The page URL for a client connected to the hub at `hub`: pass `HubClient.currentURL`, so a client that
+    /// reached the hub on another address (a Hub Network one) loads the page there too
+    public func url(hub: URL) -> URL? {
+      // The URL form of the host, with IPv6 addresses in brackets
+      url(hubHost: URLComponents(url: hub, resolvingAgainstBaseURL: false)?.percentEncodedHost)
+    }
   }
   public init(type: AppType, name: String, path: String, icon: String? = nil, widget: Widget? = nil, web: Web? = nil) {
     self.type = type
