@@ -7,14 +7,15 @@ public actor AppleLocalNetworkAgent {
   /// The system agent's socket
   public static let systemSocketPath = "/var/run/hub-net/agent.sock"
   /// `HUB_NET_AGENT_SOCKET`, the system agent's socket, or else the Hub app's, which runs as the user and can't create
-  /// one under `/var/run` (`~/.hub-net/agent.sock`)
+  /// one under `/var/run`: in its sandbox container, or `~/.hub-net` when it runs unsandboxed
   public static var defaultSocketPath: String {
     socketPath(environment: ProcessInfo.processInfo.environment, exists: FileManager.default.fileExists(atPath:))
   }
   static func socketPath(environment: [String: String], exists: (String) -> Bool) -> String {
     if let path = environment["HUB_NET_AGENT_SOCKET"], !path.isEmpty { return path }
     guard !exists(systemSocketPath), let home = environment["HOME"] else { return systemSocketPath }
-    return "\(home)/.hub-net/agent.sock"
+    let sandboxed = "\(home)/Library/Containers/dev.v57.Hub/Data/.hub-net/agent.sock"
+    return exists(sandboxed) ? sandboxed : "\(home)/.hub-net/agent.sock"
   }
   private static let maximumResponseLength = 1_048_576
 

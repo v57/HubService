@@ -4,10 +4,12 @@ import Testing
 #if canImport(Network)
 @Suite("Apple local-agent IPC")
 struct AppleLocalNetworkAgentTests {
-  @Test("the socket is the environment's, the system agent's, then the Hub app's in the home folder")
+  @Test("the socket is the environment's, the system agent's, then the Hub app's in its container or the home folder")
   func socketPath() {
     #expect(AppleLocalNetworkAgent.socketPath(environment: ["HUB_NET_AGENT_SOCKET": "/tmp/a.sock", "HOME": "/Users/me"], exists: { _ in true }) == "/tmp/a.sock")
     #expect(AppleLocalNetworkAgent.socketPath(environment: ["HOME": "/Users/me"], exists: { _ in true }) == "/var/run/hub-net/agent.sock")
+    let container = "/Users/me/Library/Containers/dev.v57.Hub/Data/.hub-net/agent.sock"
+    #expect(AppleLocalNetworkAgent.socketPath(environment: ["HOME": "/Users/me"], exists: { $0 == container }) == container)
     #expect(AppleLocalNetworkAgent.socketPath(environment: ["HOME": "/Users/me"], exists: { _ in false }) == "/Users/me/.hub-net/agent.sock")
   }
 
