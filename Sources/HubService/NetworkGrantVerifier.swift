@@ -106,7 +106,8 @@ public struct GatewayGrantBinding: Equatable, Sendable {
 
 public enum HubNetworkSignedEnvelope {
   public static let connectionGrantMaximumLifetime: TimeInterval = 5 * 60
-  public static let gatewayGrantMaximumLifetime: TimeInterval = 5 * 60
+  /// As long as a peer link: a member keeps using a gateway while its app sleeps (hub-server GATEWAY_GRANT_MAX_LIFETIME_MS)
+  public static let gatewayGrantMaximumLifetime: TimeInterval = 30 * 24 * 3600
   public static let maximumClockSkew: TimeInterval = 30
 
   /// Returns exact Hub Network v1 signed bytes:
