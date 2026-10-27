@@ -11,19 +11,19 @@ import Android
 import WinSDK
 #endif
 
-// Off Apple platforms Network.framework's address parsing, which Network.swift uses to validate Hub Network
-// addresses: the same initializers and raw bytes, from inet_pton.
-struct IPv4Address {
-  let rawValue: Data
-  init?(_ string: String) {
+// Off Apple platforms Network.framework's address parsing, which Network.swift and the Hub app use to validate Hub
+// Network addresses: the same initializers and raw bytes, from inet_pton.
+public struct IPv4Address: Hashable, Sendable {
+  public let rawValue: Data
+  public init?(_ string: String) {
     guard let bytes = parseAddress(string, family: AF_INET, size: 4) else { return nil }
     rawValue = bytes
   }
 }
 
-struct IPv6Address {
-  let rawValue: Data
-  init?(_ string: String) {
+public struct IPv6Address: Hashable, Sendable {
+  public let rawValue: Data
+  public init?(_ string: String) {
     guard let bytes = parseAddress(string, family: AF_INET6, size: 16) else { return nil }
     rawValue = bytes
   }

@@ -53,6 +53,13 @@ let package = Package(
   ]
 )
 
+#if os(Linux)
+// The Keychain off Apple platforms: the freedesktop Secret Service through v57/SwiftUI's SecretService (libsecret)
+for target in package.targets where target.name == "HubService" {
+  target.dependencies.append(.product(name: "SecretService", package: "SwiftUI"))
+}
+#endif
+
 // Off Apple platforms SwiftUI is v57/SwiftUI, as for ComponentKit: GitHub's main branch, or the checkout at
 // ~/Developer/v57/SwiftUI with `V57_LOCAL=1`.
 package.dependencies.append(Context.environment["V57_LOCAL"] == nil

@@ -90,7 +90,7 @@ public struct DeviceKey: Sendable {
     return DeviceKey(key)
   }
 
-#if canImport(Security)
+#if canImport(Security) || canImport(SecretService)
   /// A device key in any Keychain item the caller chooses, e.g. a sandboxed app's own. Created if missing.
   public static func keychain(_ configuration: KeyChain.KeychainConfiguration) throws -> DeviceKey {
     DeviceKey(try KeyChain(keychain: configuration))

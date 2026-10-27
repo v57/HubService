@@ -54,7 +54,7 @@ public final class HubKeyPins {
     case memory
     /// A JSON object `{ "<address>": "<hub SPKI>" }`, `hubs.json` beside a key file
     case file(URL)
-#if canImport(Security)
+#if canImport(Security) || canImport(SecretService)
     /// The same JSON object in a Keychain item
     case keychain(KeyChain.KeychainConfiguration)
 #endif
@@ -71,7 +71,7 @@ public final class HubKeyPins {
     switch keyChain.location {
     case .file(let url):
       return HubKeyPins(.file(url.deletingLastPathComponent().appendingPathComponent("hubs.json")))
-#if canImport(Security)
+#if canImport(Security) || canImport(SecretService)
     case .keychain(let tag):
       return HubKeyPins(.keychain(.init(service: "\(tag).hubs")))
     case .configuredKeychain(let configuration):
@@ -110,7 +110,7 @@ public final class HubKeyPins {
     switch storage {
     case .memory: data = nil
     case .file(let url): data = try? Data(contentsOf: url)
-#if canImport(Security)
+#if canImport(Security) || canImport(SecretService)
     case .keychain(let configuration): data = try? KeyChain.loadData(keychain: configuration)
 #endif
     }
@@ -127,7 +127,7 @@ public final class HubKeyPins {
     case .file(let url):
       try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
       try? data.write(to: url, options: .atomic)
-#if canImport(Security)
+#if canImport(Security) || canImport(SecretService)
     case .keychain(let configuration):
       try? KeyChain.replaceData(data, keychain: configuration)
 #endif

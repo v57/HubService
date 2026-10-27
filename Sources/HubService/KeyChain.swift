@@ -8,6 +8,8 @@
 import Foundation
 #if canImport(Security)
 import Security
+#elseif canImport(SecretService)
+import SecretService
 #endif
 #if canImport(Crypto)
 import Crypto
@@ -23,7 +25,7 @@ public struct KeyChain: Sendable {
     case keychainStatus(Int32)
   }
 
-#if canImport(Security)
+#if canImport(Security) || canImport(SecretService)
   public struct KeychainConfiguration: Sendable, Equatable {
     public let service: String
     public let account: String?
@@ -50,7 +52,7 @@ public struct KeyChain: Sendable {
   public static func file(_ url: URL) -> KeyChain {
     KeyChain(.file(url))
   }
-#if canImport(Security)
+#if canImport(Security) || canImport(SecretService)
   public static func keychain(_ tag: String) -> KeyChain {
     KeyChain(.keychain(tag))
   }
@@ -67,7 +69,7 @@ public struct KeyChain: Sendable {
       .file(URL.homeDirectory.appendingPathComponent("hub.key"))
     }
     case none
-#if canImport(Security)
+#if canImport(Security) || canImport(SecretService)
     case keychain(String)
     case configuredKeychain(KeychainConfiguration)
 #endif
@@ -76,8 +78,9 @@ public struct KeyChain: Sendable {
       case .file(let url):
         return try? Data(contentsOf: url)
       case .none: return nil
-#if canImport(Security)
+#if canImport(Security) || canImport(SecretService)
       case .keychain(let tag):
+#if canImport(Security)
         let query = [
           kSecClass: kSecClassGenericPassword,
           kSecAttrService: tag,
@@ -88,6 +91,9 @@ public struct KeyChain: Sendable {
         let status = SecItemCopyMatching(query, &value)
         guard status == errSecSuccess else { return nil }
         return value as? Data
+#else
+        return try? Self.load(KeychainConfiguration(service: tag))
+#endif
       case .configuredKeychain(let configuration):
         return try? Self.load(configuration)
 #endif
@@ -98,8 +104,9 @@ public struct KeyChain: Sendable {
       case .file(let url):
         try? data.write(to: url, options: .atomic)
       case .none: break
-#if canImport(Security)
+#if canImport(Security) || canImport(SecretService)
       case .keychain(let tag):
+#if canImport(Security)
         let identity = [
           kSecClass: kSecClassGenericPassword,
           kSecAttrService: tag
@@ -112,12 +119,16 @@ public struct KeyChain: Sendable {
         ] as [CFString: Any] as CFDictionary
         SecItemDelete(identity)
         SecItemAdd(query, nil)
+#else
+        try? Self.replace(data, configuration: KeychainConfiguration(service: tag))
+#endif
       case .configuredKeychain(let configuration):
         try? Self.save(data, configuration: configuration)
 #endif
       }
     }
 
+#if canImport(Security) || canImport(SecretService)
 #if canImport(Security)
     private static func query(
       _ configuration: KeychainConfiguration
@@ -173,6 +184,45 @@ public struct KeyChain: Sendable {
         throw Error.keychainStatus(status)
       }
     }
+
+    fileprivate static func delete(_ configuration: KeychainConfiguration) throws {
+      let status = SecItemDelete(query(configuration) as CFDictionary)
+      guard status == errSecSuccess || status == errSecItemNotFound else {
+        throw Error.keychainStatus(status)
+      }
+    }
+#else
+    // The freedesktop Secret Service (the login keyring): service and account identify an item, as in the Keychain.
+    // An access group and the data protection keychain mean nothing there.
+    fileprivate static func load(_ configuration: KeychainConfiguration) throws -> Data? {
+      do {
+        return try SecretService.read(service: configuration.service, account: configuration.account ?? "")
+      } catch {
+        throw Error.keychainStatus(-1)
+      }
+    }
+
+    fileprivate static func replace(_ data: Data, configuration: KeychainConfiguration) throws {
+      try save(data, configuration: configuration)
+    }
+
+    fileprivate static func save(_ data: Data, configuration: KeychainConfiguration) throws {
+      do {
+        try SecretService.write(
+          data, service: configuration.service, account: configuration.account ?? "", label: configuration.service)
+      } catch {
+        throw Error.keychainStatus(-1)
+      }
+    }
+
+    fileprivate static func delete(_ configuration: KeychainConfiguration) throws {
+      do {
+        try SecretService.delete(service: configuration.service, account: configuration.account ?? "")
+      } catch {
+        throw Error.keychainStatus(-1)
+      }
+    }
+#endif
 #endif
   }
   
@@ -226,7 +276,7 @@ public struct KeyChain: Sendable {
     (Self.pkcs8Prefix + privateKey.rawRepresentation + publicKeyData()).base64EncodedString()
   }
 
-#if canImport(Security)
+#if canImport(Security) || canImport(SecretService)
   public init(keychain configuration: KeychainConfiguration, createIfMissing: Bool = true) throws {
     location = .configuredKeychain(configuration)
     if let data = try Location.load(configuration) {
@@ -263,6 +313,11 @@ public struct KeyChain: Sendable {
   /// Writes a configured Keychain item, replacing an existing one
   public static func replaceData(_ data: Data, keychain configuration: KeychainConfiguration) throws {
     try Location.replace(data, configuration: configuration)
+  }
+
+  /// Deletes a configured Keychain item; nothing to do when it doesn't exist
+  public static func deleteData(keychain configuration: KeychainConfiguration) throws {
+    try Location.delete(configuration)
   }
 #endif
 
