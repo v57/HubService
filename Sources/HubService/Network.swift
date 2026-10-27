@@ -1,5 +1,7 @@
 import Foundation
+#if canImport(Network)
 import Network
+#endif
 #if canImport(CryptoKit)
 import CryptoKit
 #else
