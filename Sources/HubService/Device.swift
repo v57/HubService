@@ -39,6 +39,16 @@ public struct DeviceKey: Sendable {
     return "\(digits.prefix(3)) \(digits.suffix(3))"
   }
 
+  /// What a parent signs to take a child (protocol.md section 14)
+  public static func attachSignedData(hubKey: String, parentKey: String, childKey: String, at: Int) -> String {
+    "hubattach1:\(hubKey):\(parentKey):\(childKey):\(at)"
+  }
+  /// This device's signature taking a child on the hub with the key `hubKey`. It is the approval: compare the safety
+  /// code first.
+  public func attachSignature(hubKey: String, childKey: String, at: Int) -> String {
+    keyChain.sign(text: Self.attachSignedData(hubKey: hubKey, parentKey: publicKey, childKey: childKey, at: at))
+  }
+
   /// Verifies a device signature (standard base64) over `text` with a device SPKI
   public static func verify(signature: String, text: String, publicKey: String) -> Bool {
     guard let raw = KeyChain.rawPublicKey(spkiBase64: publicKey),
@@ -197,7 +207,7 @@ public struct DeviceIdentity: Sendable {
   public var name: String?
   /// `macos`, `ios`, `ipados`, `visionos`, `tvos`, `watchos`, `linux`, `windows`, `android`, `other`
   public var platform: String?
-  /// Declared parent device name for containers and VMs
+  /// A name this device declares for where it runs, which gives it nothing (a parent signs, protocol.md section 14)
   public var parent: String?
   public init(key: DeviceKey, name: String? = nil, platform: String? = DeviceIdentity.currentPlatform, parent: String? = nil) {
     self.key = key

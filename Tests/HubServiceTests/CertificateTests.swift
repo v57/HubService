@@ -21,6 +21,22 @@ struct CertificateTests {
     #expect(DeviceKey.id(publicKey: vector.publicKey) == vector.deviceId)
   }
 
+  @Test("what a parent signs to attach a child")
+  func attach() throws {
+    let vectors = try Vectors.load()
+    let vector = vectors.attach
+    let device = DeviceKey(try key(vectors.keys["device"]!))
+    #expect(device.publicKey == vector.parentKey)
+    #expect(DeviceKey.attachSignedData(hubKey: vector.hubKey, parentKey: vector.parentKey, childKey: vector.childKey, at: vector.at) == vector.signedData)
+    // CryptoKit's signatures differ per call: checked, not compared
+    #expect(DeviceKey.verify(signature: device.attachSignature(hubKey: vector.hubKey, childKey: vector.childKey, at: vector.at), text: vector.signedData, publicKey: vector.parentKey))
+    #expect(DeviceKey.verify(signature: vector.signature, text: vector.signedData, publicKey: vector.parentKey))
+    let request = try JSONDecoder().decode(AttachRequest.self, from: Data(#"{"id":"i","key":"k","name":"n","approved":false,"codeValue":"v","safetyCode":"000 000","askedAt":"2026-11-04T00:00:00.000Z"}"#.utf8))
+    #expect(request.verifiedCode(hubKey: "h") == nil, "the hub's code has to hold for the key this side pinned")
+    let grant = try JSONDecoder().decode(Grant.self, from: Data(#"{"id":"g","subject":{"device":"d"},"object":{"path":"a"},"copyOf":"s"}"#.utf8))
+    #expect(grant.copyOf == "s" && grant.linked == nil)
+  }
+
   @Test("certificates match the vectors")
   func certificates() throws {
     let vectors = try Vectors.load()

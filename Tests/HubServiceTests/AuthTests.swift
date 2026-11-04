@@ -26,6 +26,15 @@ struct Vectors: Decodable {
     var cases: [Case]
   }
   var safetyCode: SafetyCode
+  struct Attach: Decodable {
+    var hubKey: String
+    var parentKey: String
+    var childKey: String
+    var at: Int
+    var signedData: String
+    var signature: String
+  }
+  var attach: Attach
   struct Token: Decodable {
     var signedData: String
     var signature: String

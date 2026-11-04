@@ -809,5 +809,14 @@
         "name": "Mac  Studio-2"
       }
     ]
+  },
+  "attach": {
+    "description": "What a parent signs to take a child (protocol.md section 14), with the keys device (parent), service (child) and hub",
+    "hubKey": "MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=",
+    "parentKey": "MCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=",
+    "childKey": "MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=",
+    "at": 1792500000,
+    "signedData": "hubattach1:MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=:MCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=:MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=:1792500000",
+    "signature": "01+k7V0ZBD7bTANmwImmrCY1sU29U9Lk6T2h2bkv81hWB053QG5z6jhCO/u+OPkyjkbSZEP6ruP8UShv67StDA=="
   }
 }

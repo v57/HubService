@@ -43,9 +43,13 @@ public struct Device: Codable, Hashable, Identifiable, Sendable {
   public var services: [Service]
   /// What its safety code covers: for owners and the device's own person
   public var codeValue: String?
+  /// The parent's device id, signed by it. `parent` is only a name the device declared.
+  public var attachedTo: String?
+  /// Whether grants the owner linked reach this child
+  public var linked: Bool?
 
   enum CodingKeys: String, CodingKey {
-    case id, key, name, platform, os, arch, parent, approved, revoked, online, network, overlay, lastSeen, capabilities, services, codeValue
+    case id, key, name, platform, os, arch, parent, approved, revoked, online, network, overlay, lastSeen, capabilities, services, codeValue, attachedTo, linked
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -65,6 +69,8 @@ public struct Device: Codable, Hashable, Identifiable, Sendable {
     capabilities = try? container.decodeIfPresent(Capabilities.self, forKey: .capabilities)
     services = (try? container.decodeIfPresent([Service].self, forKey: .services)) ?? []
     codeValue = try? container.decodeIfPresent(String.self, forKey: .codeValue)
+    attachedTo = try? container.decodeIfPresent(String.self, forKey: .attachedTo)
+    linked = try? container.decodeIfPresent(Bool.self, forKey: .linked)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
@@ -84,6 +90,8 @@ public struct Device: Codable, Hashable, Identifiable, Sendable {
     try container.encodeIfPresent(capabilities, forKey: .capabilities)
     try container.encode(services, forKey: .services)
     try container.encodeIfPresent(codeValue, forKey: .codeValue)
+    try container.encodeIfPresent(attachedTo, forKey: .attachedTo)
+    try container.encodeIfPresent(linked, forKey: .linked)
   }
   static func date(_ value: String) -> Date? {
     ISO8601DateFormatter.hubNetworkDate(from: value)
@@ -112,6 +120,28 @@ public struct PendingDevice: Codable, Hashable, Identifiable, Sendable {
   }
 }
 
+/// `hub/device/attach/requests`: a device asking to attach (protocol.md section 14)
+public struct AttachRequest: Codable, Hashable, Identifiable, Sendable {
+  public var id: String
+  public var key: String
+  public var name: String
+  public var platform: String?
+  public var approved: Bool
+  /// `ddd ddd` as the hub says it. Show `verifiedCode(hubKey:)` instead, which holds it to the key you pinned.
+  public var safetyCode: String
+  public var codeValue: String
+  /// The parent it named. Without one, only an owner can take it.
+  public var parent: String?
+  public var askedAt: String?
+  public var askedAtDate: Date? { askedAt.flatMap(Device.date) }
+
+  /// The code to compare with the one on the device, computed from your pinned hub key. Nil when the hub says otherwise.
+  public func verifiedCode(hubKey: String) -> String? {
+    let code = DeviceKey.safetyCode(hubKey: hubKey, deviceKey: key, codeValue: codeValue)
+    return code == safetyCode ? code : nil
+  }
+}
+
 /// `hub/device/request`: where this connection's device stands
 public struct DeviceRequest: Codable, Hashable, Sendable {
   public enum Status: String, Codable, Hashable, Sendable {
@@ -123,6 +153,8 @@ public struct DeviceRequest: Codable, Hashable, Sendable {
   public var name: String?
   /// What the code covers besides the two keys. No code exists before it arrives.
   public var codeValue: String?
+  /// Set once a parent signed for it
+  public var attachedTo: String?
 
   /// The code this device shows, computed from the hub key it pinned and its own key. Never a code without the hub's value.
   public func safetyCode(hubKey: String, deviceKey: String) -> String? {
@@ -380,6 +412,10 @@ public struct Grant: Codable, Hashable, Identifiable, Sendable {
   public var object: Object
   public var by: String?
   public var at: String?
+  /// A device's own grant the owner linked: it passes to the device's linked children
+  public var linked: Bool?
+  /// A copy on a child: the id of the grant it came from. It goes with that grant, and can't be removed itself.
+  public var copyOf: String?
 }
 
 /// `hub/api/services`: a provider of a path
@@ -432,6 +468,41 @@ public struct HubDevicesAPI {
     try await client.send("hub/device/revoke", Revoke(id: id, keepServices: keepServices))
   }
 
+  // Child devices (protocol.md section 14)
+  /// `hub/device/attach/requests`: devices asking to attach, for an owner all of them, else those naming this device
+  public func attachRequests() -> Values<Void, EmptyCodable, EmptyCodable, [AttachRequest]> {
+    client.values("hub/device/attach/requests")
+  }
+  /// Asks to attach this connection's device, to `parent` when named; else an owner takes it
+  @discardableResult
+  public func askAttach(parent: String? = nil) async throws -> DeviceRequest {
+    try await client.send("hub/device/attach/ask", AskAttach(parent: parent))
+  }
+  /// Signs for a device that asked, with this connection's device key. An owner's signature also approves it.
+  @discardableResult
+  public func attach(_ request: AttachRequest, signingWith key: DeviceKey, hubKey: String, at: Int = Int(Date().timeIntervalSince1970)) async throws -> Device {
+    try await client.send("hub/device/attach", Attach(child: request.id, at: at, signature: key.attachSignature(hubKey: hubKey, childKey: request.key, at: at)))
+  }
+  /// Turns an attach request down; further ones are ignored while the hub knows the device
+  public func dismissAttach(_ id: String) async throws {
+    try await client.send("hub/device/attach/dismiss", ID(id: id))
+  }
+  /// Ends a link and what came through it. The device stays approved with what it was given directly.
+  @discardableResult
+  public func detach(_ id: String) async throws -> Device {
+    try await client.send("hub/device/detach", ID(id: id))
+  }
+  /// Whether linked grants reach this child
+  @discardableResult
+  public func setLinked(_ id: String, _ linked: Bool) async throws -> Device {
+    try await client.send("hub/device/link", Link(id: id, linked: linked))
+  }
+  /// Whether a device's own grant passes down its linked children
+  @discardableResult
+  public func setGrantLinked(_ id: String, _ linked: Bool) async throws -> Grant {
+    try await client.send("hub/grant/link", Link(id: id, linked: linked))
+  }
+
   // Reporter
   /// `hub/device/describe`, only from the device's reporter connection
   public func describe(_ description: DeviceDescription) async throws {
@@ -466,6 +537,18 @@ public struct HubDevicesAPI {
 
   public struct ID: Codable, Hashable, Sendable {
     public var id: String
+  }
+  struct AskAttach: Encodable, Sendable {
+    let parent: String?
+  }
+  struct Attach: Encodable, Sendable {
+    let child: String
+    let at: Int
+    let signature: String
+  }
+  struct Link: Encodable, Sendable {
+    let id: String
+    let linked: Bool
   }
   struct Rename: Encodable, Sendable {
     var id: String
