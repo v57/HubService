@@ -11,7 +11,7 @@ import HubService
 /// The widget body for `size`, or the app's `body` when it has no widget content. Streams the app like `HubAppView`.
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 public struct HubWidgetView: View {
-  @EnvironmentObject private var hub: HubClient
+  @Environment(HubClient.self) private var hub
   @State private var app = ServiceApp()
   let header: AppHeader
   let size: WidgetSize

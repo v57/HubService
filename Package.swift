@@ -4,7 +4,7 @@ import PackageDescription
 #if canImport(CryptoKit)
 let package = Package(
   name: "HubService",
-  platforms: [.macOS(.v10_15), .iOS(.v13), .visionOS(.v1), .tvOS(.v13), .watchOS(.v6), .macCatalyst(.v13)],
+  platforms: [.macOS(.v14), .iOS(.v17), .visionOS(.v1), .tvOS(.v17), .watchOS(.v10), .macCatalyst(.v17)],
   products: [
     .library(name: "HubService", targets: ["HubService"]),
     .library(name: "HubUI", targets: ["HubUI"])
@@ -24,7 +24,7 @@ let package = Package(
 #else // Linux/Windows/Android
 let package = Package(
   name: "HubService",
-  platforms: [.macOS(.v10_15), .iOS(.v13), .visionOS(.v1), .tvOS(.v13), .watchOS(.v6), .macCatalyst(.v13)],
+  platforms: [.macOS(.v14), .iOS(.v17), .visionOS(.v1), .tvOS(.v17), .watchOS(.v10), .macCatalyst(.v17)],
   products: [
     .library(name: "HubService", targets: ["HubService"]),
     .library(name: "HubUI", targets: ["HubUI"])

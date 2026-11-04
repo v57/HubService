@@ -29,7 +29,7 @@ public struct ServiceProvider: Codable, Sendable, Hashable, Identifiable {
     self.name = name
   }
   struct Picker: View {
-    @EnvironmentObject private var hub: HubClient
+    @Environment(HubClient.self) private var hub
     @Environment(\.serviceProviders) private var providers
     
     let path: String
@@ -51,7 +51,7 @@ public struct ServiceProvider: Codable, Sendable, Hashable, Identifiable {
     }
   }
   struct Sync: ViewModifier {
-    @EnvironmentObject var hub: HubClient
+    @Environment(HubClient.self) var hub
     @State private var providers: [ServiceProvider] = []
     let path: String
     

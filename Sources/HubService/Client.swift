@@ -7,8 +7,10 @@
 
 import Foundation
 import Channel
+import Observation
 
 @MainActor
+@Observable
 public class HubClient: @MainActor Identifiable {
   public static let test = HubClient(connect: false)
   public var id: URL { url }
@@ -41,14 +43,14 @@ public class HubClient: @MainActor Identifiable {
   /// the hub-bound, device-attached connection.
   public private(set) var isReady = false
   /// Called when a hub's key couldn't be learned or no longer matches
-  public var onHubKeyError: ((HubKeyError) -> Void)?
+  @ObservationIgnored public var onHubKeyError: ((HubKeyError) -> Void)?
   /// Set while the hub refuses this client's connection, with the reason; cleared when a connection opens.
   /// Posts fail with Channel's `refused` error meanwhile, and the client tries again every 30 seconds.
   public private(set) var refusal: Refusal?
   /// Called when the hub refused the connection, once the reason is known
-  public var onRefused: ((Refusal) -> Void)?
-  private var sender: ClientSender<Void>!
-  private var reporter: DeviceReporter?
+  @ObservationIgnored public var onRefused: ((Refusal) -> Void)?
+  @ObservationIgnored private var sender: ClientSender<Void>!
+  @ObservationIgnored private var reporter: DeviceReporter?
   public struct Options {
     /// The hub's key when it is known up front (from an invitation or configuration); it is pinned
     public var hubKey: String?

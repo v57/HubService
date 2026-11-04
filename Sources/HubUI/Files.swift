@@ -21,12 +21,12 @@ private extension HubClient {
 
 @available(macOS 14.0, iOS 17.0, tvOS 17.0, watchOS 10.0, *)
 #Preview {
-  HubFiles(path: "").environmentObject(HubClient.test)
+  HubFiles(path: "").environment(HubClient.test)
 }
 
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 public struct HubFiles: View {
-  @EnvironmentObject private var hub: HubClient
+  @Environment(HubClient.self) private var hub
   @Environment(\.hubName) private var name
   @State private var context = HubContext()
   @State private var list = FileList(count: 0, files: [], directories: [])
@@ -102,7 +102,7 @@ public struct HubFiles: View {
   @available(tvOS, unavailable)
   @available(watchOS, unavailable)
   struct ListView: View {
-    @EnvironmentObject private var hub: HubClient
+    @Environment(HubClient.self) private var hub
     @Environment(\.hubName) private var name
     let context: HubContext
     let list: FileList
@@ -230,7 +230,7 @@ public struct HubFiles: View {
       }
     }
     struct IconView: View {
-      @EnvironmentObject private var hub: HubClient
+      @Environment(HubClient.self) private var hub
       @Environment(\.serviceContext) private var context
       @State private var uploadManager = UploadManager.main
       

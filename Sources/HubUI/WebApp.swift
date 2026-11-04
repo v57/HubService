@@ -15,7 +15,7 @@ import HubService
 
 @available(iOS 17.0, macOS 14.0, *)
 public struct HubWebAppView: View {
-  @EnvironmentObject private var hub: HubClient
+  @Environment(HubClient.self) private var hub
   let header: AppHeader
   @State private var page: HubWebPage?
   @Environment(\.openURL) private var openURL

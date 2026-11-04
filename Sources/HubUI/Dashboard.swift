@@ -745,7 +745,7 @@ struct HubSheetView: View {
       }.frame(minWidth: 360, minHeight: 300)
         .environment(state.app)
         .environment(state.nested)
-        .environmentObject(state.hub)
+        .environment(state.hub)
         .environment(\.serviceContext, state.context)
     }
   }

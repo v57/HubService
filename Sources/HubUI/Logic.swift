@@ -8,7 +8,6 @@
 import Foundation
 import HubService
 import Observation
-import Combine
 
 struct InterfaceData {
   var string: [String: String]
@@ -75,8 +74,6 @@ public struct HubContext: Codable, Sendable, Hashable {
     self.service = service
   }
 }
-
-extension HubClient: ObservableObject { }
 
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 @MainActor

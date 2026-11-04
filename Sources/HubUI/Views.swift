@@ -14,7 +14,7 @@ import HubService
 
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 public struct HubAppView: View {
-  @EnvironmentObject private var hub: HubClient
+  @Environment(HubClient.self) private var hub
   @State private var app = ServiceApp()
   let header: AppHeader
   @State private var context = HubContext()
@@ -66,7 +66,7 @@ public struct AppPreview: View {
   public var body: some View {
     HubAppView.Content()
       .environment(app)
-      .environmentObject(HubClient.test)
+      .environment(HubClient.test)
   }
   public func top(_ make: () -> Element) -> Self {
     app.app.top = make()
@@ -88,7 +88,7 @@ extension Element: View {
   struct AppState: DynamicProperty {
     @Environment(ServiceApp.self) var app
     @Environment(NestedList.self) var nested: NestedList?
-    @EnvironmentObject var hub: HubClient
+    @Environment(HubClient.self) var hub
     @Environment(\.serviceContext) var context
     var name: String { app.app.header?.name ?? "Services" }
     func translate(_ value: String) -> String? {
@@ -423,7 +423,7 @@ class NestedList: Identifiable {
 
 @available(iOS 17.0, macOS 14.0, tvOS 17.0, watchOS 10.0, *)
 struct FileTaskStatus: View {
-  @EnvironmentObject private var hub: HubClient
+  @Environment(HubClient.self) private var hub
   @Environment(\.serviceContext) private var context
   let session: UploadManager.UploadSession
   let files: [String]
@@ -466,7 +466,7 @@ struct FileTaskStatus: View {
           LargeProgressView(progress: Double(processed) / Double(files.count), running: files.count - processed, completed: processed, icon: "photo", title: isProcessing ? "Processing" : "Processed")
           if !isProcessing {
             NavigationLink {
-              HubFiles(path: target).environmentObject(hub).environment(\.serviceContext, context)
+              HubFiles(path: target).environment(hub).environment(\.serviceContext, context)
             } label: {
               Label("View", systemImage: "folder.fill")
             }.buttonStyle(TabButtonStyle(selected: true))
