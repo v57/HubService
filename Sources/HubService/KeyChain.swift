@@ -325,6 +325,13 @@ public struct KeyChain: Sendable {
     privateKey.publicKey.rawRepresentation
   }
 
+  /// The key this device uses for `role` on the hub at `address` (canonical, see `HubAddress`). Lives in memory only.
+  public func hubCredential(_ role: HubCredentials.Role, address: String) -> KeyChain {
+    let seed = HubCredentials.seed(deviceSeed: privateKey.rawRepresentation, role: role, address: address)
+    // Always a valid 32 byte seed
+    return try! KeyChain(rawRepresentation: seed)
+  }
+
   public func signature(for data: Data) throws -> Data {
     try privateKey.signature(for: data)
   }

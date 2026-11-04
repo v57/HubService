@@ -6,36 +6,41 @@
 //
 
 import Foundation
+import Channel
 #if canImport(Security)
 import Security
 #endif
 
 public enum HubAuth {
-  /// The string an `auth` token signs: `<expiry>` for v0, `hub1:<hub key>:<expiry>` for v1
-  public static func signedData(expiry: Int, hubKey: String?) -> String {
-    if let hubKey { "hub1:\(hubKey):\(expiry)" } else { "\(expiry)" }
+  /// A token's lifetime: the hub takes at most 60 seconds ahead
+  public static let tokenLifetime = 30
+
+  /// The string an `auth` token signs: `hub1:<hub key>:<nonce>:<expiry>` for v1. `<expiry>` alone is v0, which hubs
+  /// refuse and nothing here sends; the test vectors still check it.
+  public static func signedData(expiry: Int, hubKey: String?, nonce: String? = nil) -> String {
+    if let hubKey { "hub1:\(hubKey):\(nonce ?? ""):\(expiry)" } else { "\(expiry)" }
   }
 
-  /// `key.<service SPKI>.<signature>.<expiry>`. With `hubKey` the token only works on that hub (v1).
-  public static func token(_ keyChain: KeyChain, expiry: Int, hubKey: String?) -> String {
-    "key.\(keyChain.publicKey()).\(keyChain.sign(text: signedData(expiry: expiry, hubKey: hubKey))).\(expiry)"
+  /// `key.<service SPKI>.<signature>.<expiry>.<nonce>`: works once, on that hub
+  public static func token(_ keyChain: KeyChain, expiry: Int, hubKey: String, nonce: String) -> String {
+    "key.\(keyChain.publicKey()).\(keyChain.sign(text: signedData(expiry: expiry, hubKey: hubKey, nonce: nonce))).\(expiry).\(nonce)"
   }
 
-  /// Connection headers: `v`, `auth` and, with a certificate, `device`
-  public static func headers(_ keyChain: KeyChain, hubKey: String?, certificate: String? = nil, now: Date = Date()) -> [String: String] {
-    let expiry = Int(now.timeIntervalSince1970) + 60
+  /// Connection headers for a hub that proved its key and gave `nonce` as its challenge: `v`, `auth` and, with a
+  /// certificate, `device`
+  public static func headers(_ keyChain: KeyChain, hubKey: String, nonce: String, certificate: String? = nil, now: Date = Date()) -> [String: String] {
     var headers = [
-      "v": hubKey == nil ? "0" : "1",
-      "auth": token(keyChain, expiry: expiry, hubKey: hubKey),
+      "v": "1",
+      "auth": token(keyChain, expiry: Int(now.timeIntervalSince1970) + tokenLifetime, hubKey: hubKey, nonce: nonce),
     ]
-    if hubKey != nil, let certificate {
+    if let certificate {
       headers["device"] = certificate
     }
     return headers
   }
 }
 
-/// `hub/info`: the hub's key and security mode
+/// `hub/info`: the hub's key and security mode, and with a nonce a proof of that key and a challenge to sign
 public struct HubInfo: Codable, Hashable, Sendable {
   public var key: String
   public var `protocol`: Int
@@ -43,10 +48,95 @@ public struct HubInfo: Codable, Hashable, Sendable {
   public var pro: Bool?
   /// `default-allow` or `default-deny`
   public var mode: String?
+  /// One-time, for one connection, valid for a minute
+  public var challenge: String?
+  /// The hub key's signature of `hubinfo1:<key>:<client nonce>`
+  public var proof: String?
+}
+
+/// Asking a hub who it is before it gets anything: an anonymous connection, a nonce, and a signature of it by the key the
+/// hub claims. A relayed answer passes too, so a proof pins a key and never decides which credentials a hub gets.
+@MainActor
+public enum HubHandshake {
+  public enum Answer: Hashable, Sendable {
+    /// The hub proved its key at `url`, the pinned key if there is a pin
+    case proven(HubInfo, challenge: String, url: URL)
+    /// The hub at the address proved another key than the pinned one
+    case mismatch(current: String)
+    /// Nothing answered with a proof, which never counts as a key
+    case none
+  }
+
+  /// 32 random bytes in base64url
+  public nonisolated static func makeNonce() -> String {
+    var bytes = [UInt8](repeating: 0, count: 32)
+    for index in bytes.indices { bytes[index] = UInt8.random(in: .min ... .max) }
+    return Data(bytes).base64URLEncoded()
+  }
+
+  /// The string `proof` signs
+  public nonisolated static func signedData(hubKey: String, nonce: String) -> String {
+    "hubinfo1:\(hubKey):\(nonce)"
+  }
+
+  /// Whether an answer proves its key over `nonce`
+  public nonisolated static func proves(_ info: HubInfo, nonce: String) -> Bool {
+    guard let proof = info.proof, info.challenge != nil else { return false }
+    return DeviceKey.verify(signature: proof, text: signedData(hubKey: info.key, nonce: nonce), publicKey: info.key)
+  }
+
+  private struct Request: Encodable, Sendable {
+    var nonce: String
+  }
+
+  /// `hub/info` on a connection of its own, without credentials. `nil` unless the answer proves its key.
+  public static func ask(_ url: URL, timeout: TimeInterval = 5) async -> HubInfo? {
+    let nonce = makeNonce()
+    let probe = Channel<Void>().connect(url)
+    defer { probe.stop() }
+    return await withTaskCancellationHandler {
+      guard let info: HubInfo = try? await probe.send("hub/info", Request(nonce: nonce), options: SendOptions(timeout: timeout)) else {
+        return nil
+      }
+      return proves(info, nonce: nonce) ? info : nil
+    } onCancel: {
+      Task { @MainActor in probe.stop() }
+    }
+  }
+
+  /// Asks every address at once and takes the first that proves `pinned`, or with no pin what the first address proves.
+  /// Only the first address, the one the hub is known by, can report a mismatch: the others are just other ways in.
+  public static func ask(_ urls: [URL], pinned: String?, timeout: TimeInterval = 5) async -> Answer {
+    guard let main = urls.first else { return .none }
+    return await withTaskGroup(of: AddressAnswer.self, returning: Answer.self) { group in
+      for url in pinned == nil ? [main] : urls {
+        group.addTask { await AddressAnswer.ask(url, timeout: timeout) }
+      }
+      var other: HubInfo?
+      while let answer = await group.next() {
+        guard let info = answer.info else { continue }
+        if pinned == nil || info.key == pinned, let challenge = info.challenge {
+          group.cancelAll()
+          return .proven(info, challenge: challenge, url: answer.url)
+        }
+        if answer.url == main { other = info }
+      }
+      if let other { return .mismatch(current: other.key) }
+      return .none
+    }
+  }
+
+  private struct AddressAnswer: Sendable {
+    var url: URL
+    var info: HubInfo?
+    @MainActor static func ask(_ url: URL, timeout: TimeInterval) async -> AddressAnswer {
+      AddressAnswer(url: url, info: await HubHandshake.ask(url, timeout: timeout))
+    }
+  }
 }
 
 /// Hub keys pinned per hub address, so auth tokens are bound to the hub they were made for.
-/// The first connection to a hub learns its key from `hub/info`; later ones send `v: 1` tokens.
+/// The first connection to a hub pins the key it proves over `hub/info`; every connection then has to prove the same.
 @MainActor
 public final class HubKeyPins {
   public enum Storage: Sendable {
@@ -99,7 +189,7 @@ public final class HubKeyPins {
     save()
   }
 
-  /// Forgets the hub key, so the next connection learns it again with a v0 token
+  /// Forgets the hub key, so the next connection pins what the hub proves
   public func forget(_ address: URL) {
     guard keys.removeValue(forKey: address.absoluteString) != nil else { return }
     save()

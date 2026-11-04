@@ -8,7 +8,7 @@ import Testing
 struct LiveHubTests {
   let url = URL(string: ProcessInfo.processInfo.environment["HUB_LIVE_URL"] ?? "ws://127.0.0.1:1997")!
 
-  @Test("learns and pins the hub key, then reconnects with v1 and a certificate")
+  @Test("pins the key the hub proves, and connects with v1 and a certificate")
   func learnsHubKey() async throws {
     let pins = HubKeyPins(.memory)
     let device = DeviceIdentity(key: DeviceKey(KeyChain(.none)), name: "Swift live test", platform: "other")

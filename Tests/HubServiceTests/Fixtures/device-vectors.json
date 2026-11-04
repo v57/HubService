@@ -27,10 +27,11 @@
       "header": "key.MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=.anPyS0SzpWRDUpXrtnu9LXdFIAT5c5Uj6bIHy6X6XLQxhgbWhCtSFqxUUH/ERAozMkNpYAxxCfJNng8XJEkUCg==.1792500300"
     },
     "v1": {
-      "signedData": "hub1:MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=:1792500300",
-      "signature": "dAdbJoMplPHWWh+UREf+DwnOXAavNRiUsztLrHVe1VNAOBxMvsxVk1zbzZBpi6xG7y8GdhCuOesfu7Ng2JREDg==",
-      "header": "key.MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=.dAdbJoMplPHWWh+UREf+DwnOXAavNRiUsztLrHVe1VNAOBxMvsxVk1zbzZBpi6xG7y8GdhCuOesfu7Ng2JREDg==.1792500300"
-    }
+      "signedData": "hub1:MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=:BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw:1792500300",
+      "signature": "gHajiviigjog5S/+SDfjipAJ8BD7LGzBwgHu0QCpmds6z27MrutNrCYPmicRJFvDasLQI3JMH71O8+++S6V4Aw==",
+      "header": "key.MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=.gHajiviigjog5S/+SDfjipAJ8BD7LGzBwgHu0QCpmds6z27MrutNrCYPmicRJFvDasLQI3JMH71O8+++S6V4Aw==.1792500300.BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw"
+    },
+    "nonce": "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBw"
   },
   "certificate": {
     "json": "{\"v\":1,\"device\":\"MCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=\",\"service\":\"MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=\",\"instance\":\"s3-local/Backup Disk\",\"deviceName\":\"Mac Studio\",\"platform\":\"macos\",\"iat\":1792500000,\"exp\":1793104800}",
@@ -61,5 +62,204 @@
         "hubKey": "MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w="
       }
     }
-  }
+  },
+  "hubInfo": {
+    "nonce": "CQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQk",
+    "signedData": "hubinfo1:MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=:CQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQkJCQk",
+    "proof": "7+Qd4FUfIAGNV05t0qkQJfwrbZe5c5d27Fh17iRVXRCfgMx/CkZD1o6SJLvnIYmurRPPWKeC6h41i6glgl0lBQ=="
+  },
+  "credentials": {
+    "deviceSeed": "0303030303030303030303030303030303030303030303030303030303030303",
+    "salt": "hub-credentials-v1",
+    "canonical": [
+      {
+        "input": "1997",
+        "address": "ws://localhost:1997"
+      },
+      {
+        "input": "ws://Hub.Example.COM:1997/",
+        "address": "ws://hub.example.com:1997"
+      },
+      {
+        "input": "WSS://hub.example.com:443",
+        "address": "wss://hub.example.com"
+      },
+      {
+        "input": "wss://hub.example.com./",
+        "address": "wss://hub.example.com"
+      },
+      {
+        "input": "ws://user:pass@192.168.1.5:80/?a=1#b",
+        "address": "ws://192.168.1.5"
+      },
+      {
+        "input": "https://hub.example.com/hub/",
+        "address": "wss://hub.example.com/hub"
+      },
+      {
+        "input": "http://hub.example.com:8080",
+        "address": "ws://hub.example.com:8080"
+      },
+      {
+        "input": "ws://[FE80::1]:1997",
+        "address": "ws://[fe80::1]:1997"
+      },
+      {
+        "input": "quic://Hub.Example.com:1997",
+        "address": "quic://hub.example.com:1997"
+      }
+    ],
+    "keys": [
+      {
+        "role": "device",
+        "address": "ws://192.168.1.5:1997",
+        "seed": "1c8d82e0217f57c765dcd99b886566928c2d7981ec7722e73f2192be0a7dfda3",
+        "publicKey": "MCowBQYDK2VwAyEAJf7h7XNtPqLrGbhKLQHrn6TrFupwdaPivkzVfobidHw="
+      },
+      {
+        "role": "client",
+        "address": "ws://192.168.1.5:1997",
+        "seed": "d305107641b154ad32c944d1889dc7409f5449690ea19061dee9528d3931391e",
+        "publicKey": "MCowBQYDK2VwAyEAiLuIFX6UJ+W5YqX3zNsyc45fKT8mmspSKCGmHzF4uZg="
+      },
+      {
+        "role": "hub-app",
+        "address": "ws://192.168.1.5:1997",
+        "seed": "91d82d81c7997eec765856dbaee463b56c09b025678ed25b09a0f04e5f8e9d30",
+        "publicKey": "MCowBQYDK2VwAyEACYwVk7fVmFclaQfB9py1/m93v07JzFRd8d0majiy6UY="
+      },
+      {
+        "role": "device",
+        "address": "wss://hub.example.com",
+        "seed": "a577772fb883d94dd8b4c5b979ed661019f9addef4eda17a20844752d591aac8",
+        "publicKey": "MCowBQYDK2VwAyEAdHtbHgG2S75stitDLJpgl7ZXCVFMFd+6QYmkDI5tFoc="
+      },
+      {
+        "role": "client",
+        "address": "wss://hub.example.com",
+        "seed": "9794aaa23a546084ea6b699220971338ed049d5b9e265f2ad65b9c37a868e7cc",
+        "publicKey": "MCowBQYDK2VwAyEAT1IISDWkcvWw00rTgeSd3CdVXoeK+Wyk41OI/Zl2TGw="
+      },
+      {
+        "role": "hub-app",
+        "address": "wss://hub.example.com",
+        "seed": "6362334dba625438dd1835d70b9914e022af1c2afd69c1c286a1bb5d26666854",
+        "publicKey": "MCowBQYDK2VwAyEAjT6EgXIRMq1TUQ6jov5fTOGR8vO5uPvNLqOFjzU/YJE="
+      }
+    ]
+  },
+  "transport": [
+    {
+      "url": "wss://hub.example.com",
+      "transport": "encrypted"
+    },
+    {
+      "url": "quic://203.0.113.5:1997",
+      "transport": "encrypted"
+    },
+    {
+      "url": "ws://localhost:1997",
+      "transport": "loopback"
+    },
+    {
+      "url": "ws://127.0.0.1:1997",
+      "transport": "loopback"
+    },
+    {
+      "url": "ws://127.8.9.1:1997",
+      "transport": "loopback"
+    },
+    {
+      "url": "ws://[::1]:1997",
+      "transport": "loopback"
+    },
+    {
+      "url": "ws://a.localhost:1997",
+      "transport": "loopback"
+    },
+    {
+      "url": "ws://100.64.0.1:1997",
+      "transport": "overlay"
+    },
+    {
+      "url": "ws://100.96.0.2:1997",
+      "transport": "overlay"
+    },
+    {
+      "url": "ws://100.127.255.254:1997",
+      "transport": "overlay"
+    },
+    {
+      "url": "ws://mac-abc.v1-x.hub.invalid:1997",
+      "transport": "overlay"
+    },
+    {
+      "url": "ws://192.168.1.5:1997",
+      "transport": "localNetwork"
+    },
+    {
+      "url": "ws://10.0.0.2:1997",
+      "transport": "localNetwork"
+    },
+    {
+      "url": "ws://172.16.0.1:1997",
+      "transport": "localNetwork"
+    },
+    {
+      "url": "ws://172.31.255.1:1997",
+      "transport": "localNetwork"
+    },
+    {
+      "url": "ws://169.254.1.1:1997",
+      "transport": "localNetwork"
+    },
+    {
+      "url": "ws://[fd00::1]:1997",
+      "transport": "localNetwork"
+    },
+    {
+      "url": "ws://[fe80::1]:1997",
+      "transport": "localNetwork"
+    },
+    {
+      "url": "ws://mac.local:1997",
+      "transport": "localNetwork"
+    },
+    {
+      "url": "ws://100.128.0.1:1997",
+      "transport": "refused"
+    },
+    {
+      "url": "ws://100.63.255.255:1997",
+      "transport": "refused"
+    },
+    {
+      "url": "ws://172.32.0.1:1997",
+      "transport": "refused"
+    },
+    {
+      "url": "ws://8.8.8.8:1997",
+      "transport": "refused"
+    },
+    {
+      "url": "ws://hub.example.com:1997",
+      "transport": "refused"
+    },
+    {
+      "url": "ws://hub:1997",
+      "transport": "refused"
+    },
+    {
+      "url": "ws://[2001:db8::1]:1997",
+      "transport": "refused"
+    },
+    {
+      "url": "ws://192.168.1.5.example.com:1997",
+      "transport": "refused"
+    },
+    {
+      "url": "ws://localhost.example.com:1997",
+      "transport": "refused"
+    }
+  ]
 }

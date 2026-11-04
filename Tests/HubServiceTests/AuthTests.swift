@@ -32,8 +32,37 @@ struct Vectors: Decodable {
   var auth: Auth
   struct Auth: Decodable {
     var expiry: Int
+    var nonce: String
     var v0: Token
     var v1: Token
+  }
+  var hubInfo: HubInfoVector
+  struct HubInfoVector: Decodable {
+    var nonce: String
+    var signedData: String
+    var proof: String
+  }
+  var credentials: Credentials
+  struct Credentials: Decodable {
+    var deviceSeed: String
+    var salt: String
+    var canonical: [Canonical]
+    struct Canonical: Decodable {
+      var input: String
+      var address: String
+    }
+    var keys: [DerivedKey]
+    struct DerivedKey: Decodable {
+      var role: String
+      var address: String
+      var seed: String
+      var publicKey: String
+    }
+  }
+  var transport: [TransportCase]
+  struct TransportCase: Decodable {
+    var url: String
+    var transport: String
   }
   var certificate: Certificate
   var childCertificate: Certificate
@@ -77,34 +106,90 @@ struct AuthTokenTests {
 
   /// CryptoKit signs Ed25519 with randomness, so signatures can't equal the vectors byte for byte. The signed
   /// strings must, every signature must verify, and the vectors' signatures must verify with our keys.
-  @Test("v0 and v1 tokens match the vectors")
+  @Test("tokens match the vectors")
   func tokens() throws {
     let vectors = try Vectors.load()
     let service = try key(vectors.keys["service"]!)
     let hub = vectors.keys["hub"]!.publicKey
     let expiry = vectors.auth.expiry
-    for (hubKey, vector) in [(nil, vectors.auth.v0), (hub, vectors.auth.v1)] {
-      #expect(HubAuth.signedData(expiry: expiry, hubKey: hubKey) == vector.signedData)
-      #expect(verify(vector.signature, vector.signedData, service.publicKey()))
-      let parts = HubAuth.token(service, expiry: expiry, hubKey: hubKey).split(separator: ".").map(String.init)
-      let expected = vector.header.split(separator: ".").map(String.init)
-      #expect(parts.count == 4 && [parts[0], parts[1], parts[3]] == [expected[0], expected[1], expected[3]])
-      #expect(verify(parts[2], vector.signedData, service.publicKey()))
-    }
+    #expect(HubAuth.signedData(expiry: expiry, hubKey: nil) == vectors.auth.v0.signedData)
+    #expect(verify(vectors.auth.v0.signature, vectors.auth.v0.signedData, service.publicKey()))
+    let vector = vectors.auth.v1
+    #expect(HubAuth.signedData(expiry: expiry, hubKey: hub, nonce: vectors.auth.nonce) == vector.signedData)
+    #expect(verify(vector.signature, vector.signedData, service.publicKey()))
+    let parts = HubAuth.token(service, expiry: expiry, hubKey: hub, nonce: vectors.auth.nonce).split(separator: ".").map(String.init)
+    let expected = vector.header.split(separator: ".").map(String.init)
+    #expect(parts.count == 5 && [parts[0], parts[1], parts[3], parts[4]] == [expected[0], expected[1], expected[3], expected[4]])
+    #expect(verify(parts[2], vector.signedData, service.publicKey()))
   }
 
-  @Test("headers: v0 without a hub key, v1 and the certificate with one")
+  @Test("headers are v1 over the challenge, for at most 30 seconds, with the certificate")
   func headers() throws {
     let vectors = try Vectors.load()
     let service = try key(vectors.keys["service"]!)
     let hub = vectors.keys["hub"]!.publicKey
-    let now = Date(timeIntervalSince1970: TimeInterval(vectors.auth.expiry - 60))
-    let v0 = HubAuth.headers(service, hubKey: nil, certificate: "cert", now: now)
-    #expect(v0["v"] == "0" && v0["device"] == nil)
-    #expect(verify(String(v0["auth"]!.split(separator: ".")[2]), vectors.auth.v0.signedData, service.publicKey()))
-    let v1 = HubAuth.headers(service, hubKey: hub, certificate: "cert", now: now)
+    let now = Date(timeIntervalSince1970: TimeInterval(vectors.auth.expiry - HubAuth.tokenLifetime))
+    let v1 = HubAuth.headers(service, hubKey: hub, nonce: vectors.auth.nonce, certificate: "cert", now: now)
     #expect(v1["v"] == "1" && v1["device"] == "cert")
     #expect(verify(String(v1["auth"]!.split(separator: ".")[2]), vectors.auth.v1.signedData, service.publicKey()))
+  }
+
+  @Test("a hub proves its key over the client's nonce")
+  func proof() throws {
+    let vectors = try Vectors.load()
+    let hub = vectors.keys["hub"]!
+    let vector = vectors.hubInfo
+    #expect(HubHandshake.signedData(hubKey: hub.publicKey, nonce: vector.nonce) == vector.signedData)
+    let answer = HubInfo(key: hub.publicKey, protocol: 2, challenge: "challenge", proof: vector.proof)
+    #expect(HubHandshake.proves(answer, nonce: vector.nonce))
+    // Another nonce, a key the signer doesn't hold, no proof and no challenge all fail
+    #expect(!HubHandshake.proves(answer, nonce: HubHandshake.makeNonce()))
+    var claim = answer
+    claim.key = vectors.keys["device"]!.publicKey
+    #expect(!HubHandshake.proves(claim, nonce: vector.nonce))
+    var bare = answer
+    bare.proof = nil
+    #expect(!HubHandshake.proves(bare, nonce: vector.nonce))
+    bare = answer
+    bare.challenge = nil
+    #expect(!HubHandshake.proves(bare, nonce: vector.nonce))
+    #expect(HubHandshake.makeNonce().range(of: "^[A-Za-z0-9_-]{16,128}$", options: .regularExpression) != nil)
+  }
+
+  @Test("canonical addresses and credentials match the vectors")
+  func credentials() throws {
+    let vectors = try Vectors.load().credentials
+    for vector in vectors.canonical {
+      #expect(HubAddress.canonical(vector.input) == vector.address, "\(vector.input)")
+    }
+    let device = try KeyChain(rawRepresentation: Data(hex: vectors.deviceSeed))
+    #expect(vectors.salt == "hub-credentials-v1")
+    for vector in vectors.keys {
+      let role = try #require(HubCredentials.Role(rawValue: vector.role))
+      let seed = HubCredentials.seed(deviceSeed: Data(hex: vectors.deviceSeed), role: role, address: vector.address)
+      #expect(seed == Data(hex: vector.seed), "\(vector.role) \(vector.address)")
+      #expect(device.hubCredential(role, address: vector.address).publicKey() == vector.publicKey)
+    }
+  }
+
+  @Test("how an address travels matches the vectors")
+  func transport() throws {
+    for vector in try Vectors.load().transport {
+      #expect(HubTransport(address: vector.url).rawValue == vector.transport, "\(vector.url)")
+    }
+    #expect(HubTransport(URL(string: "ws://192.168.1.5:1997")!).isUnencryptedNetwork)
+    #expect(!HubTransport(URL(string: "ws://100.64.0.1:1997")!).isUnencryptedNetwork)
+  }
+
+  @MainActor
+  @Test("a plain public address is refused before dialing, and posts fail")
+  func plaintextRefused() async throws {
+    let client = HubClient(URL(string: "ws://hub.example.com:1997")!, keyChain: KeyChain(.none), options: .init(hubKeys: HubKeyPins(.memory)))
+    defer { client.stop() }
+    #expect(client.transport == .refused)
+    #expect(await client.refusalReason(timeout: 3) == .plaintextNotAllowed)
+    #expect(!(await client.waitUntilReady(timeout: 0.1)))
+    await #expect(throws: (any Error).self) { try await client.send("hub/info") as HubInfo }
   }
 
   @MainActor

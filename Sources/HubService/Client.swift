@@ -28,21 +28,22 @@ public class HubClient: @MainActor Identifiable {
   public let channel: Channel<Void>
   public let service: HubService
   public var profile: Profile
-  /// Hub keys pinned per address; a pinned key makes the connection send hub-bound `v: 1` tokens
+  /// Hub keys pinned per address
   public let hubKeys: HubKeyPins
-  /// The pinned key of this hub, learned from `hub/info` or supplied up front
+  /// The pinned key of this hub, proven over `hub/info` or supplied up front
   public var hubKey: String? { hubKeys.key(for: url) }
   /// The address the client is connected or connecting to: `url`, or one of `Options.alternateURLs`
   public var currentURL: URL { sender?.ws.currentURL ?? url }
   /// `nil` when the client connects without a device
   public let device: DeviceIdentity?
-  /// Set when the hub answered `hub/info`
+  /// How this client's connection travels: `.localNetwork` is plain `ws://` on the LAN, which a UI should say
+  public var transport: HubTransport { HubTransport(url) }
+  /// Set when the hub proved its key over `hub/info`
   public private(set) var info: HubInfo?
-  /// The current connection finished its setup: the hub key is learned (or the hub doesn't offer one) and the
-  /// services are sent. A new hub key makes the client reconnect first, so wait for this before calls that need
-  /// the hub-bound, device-attached connection.
+  /// The current connection finished its setup: the services are sent. Wait for this before calls that need the
+  /// device-attached connection.
   public private(set) var isReady = false
-  /// Called when a hub's key couldn't be learned or no longer matches
+  /// Called when the hub at this address proves another key than the pinned one
   @ObservationIgnored public var onHubKeyError: ((HubKeyError) -> Void)?
   /// Set while the hub refuses this client's connection, with the reason; cleared when a connection opens.
   /// Posts fail with Channel's `refused` error meanwhile, and the client tries again every 30 seconds.
@@ -51,6 +52,12 @@ public class HubClient: @MainActor Identifiable {
   @ObservationIgnored public var onRefused: ((Refusal) -> Void)?
   @ObservationIgnored private var sender: ClientSender<Void>!
   @ObservationIgnored private var reporter: DeviceReporter?
+  /// Bumped by every connection attempt, so a handshake still waiting for an older one ends
+  @ObservationIgnored private var handshake = 0
+  /// Why this side refused to connect, when it did
+  @ObservationIgnored private var ownRefusal: Refusal?
+  /// One refused connect asks for a new challenge at once: it can be gone after a hub restart
+  @ObservationIgnored private var retriedRefusal = false
   public struct Options {
     /// The hub's key when it is known up front (from an invitation or configuration); it is pinned
     public var hubKey: String?
@@ -65,12 +72,15 @@ public class HubClient: @MainActor Identifiable {
     /// `ClientOptions.alternateURLs`). The hub key stays the one pinned for the hub's address, so another server
     /// answering there can't take the hub's place.
     public var alternateURLs: (@MainActor () async -> [URL])?
-    public init(hubKey: String? = nil, hubKeys: HubKeyPins? = nil, device: DeviceIdentity? = nil, instance: String? = nil, alternateURLs: (@MainActor () async -> [URL])? = nil) {
+    /// Allows plain `ws://` beyond loopback, the overlay and the local network, for a private network
+    public var allowPlaintext: Bool
+    public init(hubKey: String? = nil, hubKeys: HubKeyPins? = nil, device: DeviceIdentity? = nil, instance: String? = nil, alternateURLs: (@MainActor () async -> [URL])? = nil, allowPlaintext: Bool = false) {
       self.hubKey = hubKey
       self.hubKeys = hubKeys
       self.device = device
       self.instance = instance
       self.alternateURLs = alternateURLs
+      self.allowPlaintext = allowPlaintext
     }
   }
   public init(_ url: URL = HubClient.local, keyChain: KeyChain? = nil, connect: Bool = true, options: Options = Options()) {
@@ -96,20 +106,29 @@ public class HubClient: @MainActor Identifiable {
         }
       }
       service.network.configureIdentity(keyChain)
+      let allowPlaintext = options.allowPlaintext
+      @Sendable func allowed(_ url: URL) -> Bool { allowPlaintext || HubTransport(url) != .refused }
+      var alternates: (@MainActor () async -> [URL])?
+      if let urls = options.alternateURLs {
+        alternates = { await urls().filter(allowed) }
+      }
+      let alternateURLs = alternates
       sender = channel.connect(url, options: ClientOptions(headers: { [weak self] in
-        self?.isReady = false
-        let hubKey = self?.hubKey
-        return HubAuth.headers(keyChain, hubKey: hubKey, certificate: hubKey == nil ? nil : issuer?.header())
+        guard let self else { return [:] }
+        guard allowed(url) else {
+          refuseConnecting(.plaintextNotAllowed)
+          return [:]
+        }
+        return await connectHeaders(keyChain, issuer: issuer, alternates: alternateURLs)
       }, onConnect: { [weak self] sender in
         guard let self else { return }
         await connectionOpened()
         try? await sender.send("hub/profile/update", profile)
-        guard await learnHubKey(sender) else { return }
         try await service.sendServiceUpdates(first: true)
         await setReady()
         await reporter?.connected(self)
         try await service.network.didConnect(sender)
-      }, alternateURLs: options.alternateURLs))
+      }, alternateURLs: alternateURLs))
     } else {
       sender = channel.connect(url, options: ClientOptions(alternateURLs: options.alternateURLs))
     }
@@ -131,6 +150,8 @@ public class HubClient: @MainActor Identifiable {
     case hubNotAvailable
     /// The hub refused the connection and didn't answer the anonymous check
     case refused(statusCode: Int)
+    /// This client doesn't connect: credentials would cross networks in the clear. The address needs `wss://`.
+    case plaintextNotAllowed
 
     public var description: String {
       switch self {
@@ -138,11 +159,60 @@ public class HubClient: @MainActor Identifiable {
       case .hubKeyChanged: "The hub's key changed since this device first connected, or another server answers at this address."
       case .hubNotAvailable: "The hub only accepts devices it already knows."
       case .refused(let statusCode): "The hub refused the connection (HTTP \(statusCode))."
+      case .plaintextNotAllowed: "This address isn't encrypted and isn't on this network, so this device doesn't connect to it. Use a wss:// address."
       }
     }
   }
 
+  /// Headers for one connection attempt, after the hub proves its key. Waits while nothing answers with a proof, since
+  /// the hub gets nothing before that; a reconnect or `stop()` ends the wait.
+  private func connectHeaders(_ keyChain: KeyChain, issuer: CertificateIssuer?, alternates: (@MainActor () async -> [URL])?) async -> [String: String] {
+    isReady = false
+    handshake += 1
+    let handshake = handshake
+    var delay: UInt64 = 500_000_000
+    while handshake == self.handshake, sender?.ws.isRunning != false, !Task.isCancelled {
+      let pinned = hubKey
+      let urls = await pinned == nil ? [url] : [url] + (alternates?() ?? [])
+      switch await HubHandshake.ask(urls, pinned: pinned) {
+      case .proven(let info, let challenge, let address):
+        guard handshake == self.handshake else { return [:] }
+        self.info = info
+        // The token goes where the proof came from, not to an address that may not be the hub
+        sender.ws.nextURL = address
+        hubKeys.pin(info.key, for: url)
+        return HubAuth.headers(keyChain, hubKey: info.key, nonce: challenge, certificate: issuer?.header())
+      case .mismatch(let current):
+        guard handshake == self.handshake, let pinned else { return [:] }
+        refuseConnecting(.hubKeyChanged(pinned: pinned, current: current))
+        onHubKeyError?(.mismatch(pinned: pinned, received: current))
+        return [:]
+      case .none:
+        try? await Task.sleep(nanoseconds: delay)
+        delay = min(delay * 2, 5_000_000_000)
+      }
+    }
+    return [:]
+  }
+
+  /// Like a refused upgrade: posts fail, and the client looks again every 30 seconds
+  private func refuseConnecting(_ refusal: Refusal) {
+    ownRefusal = refusal
+    sender.ws.refuseConnecting(ConnectionRefusal(statusCode: 0))
+  }
+
   private func refused(statusCode: Int) async {
+    if let ownRefusal {
+      self.ownRefusal = nil
+      refusal = ownRefusal
+      onRefused?(ownRefusal)
+      return
+    }
+    guard retriedRefusal else {
+      retriedRefusal = true
+      sender.ws.reconnectNow()
+      return
+    }
     let refusal = await diagnoseRefusal(statusCode: statusCode)
     // A connection may have opened meanwhile
     guard sender?.ws.refusal != nil else { return }
@@ -195,6 +265,7 @@ public class HubClient: @MainActor Identifiable {
 
   private func connectionOpened() {
     refusal = nil
+    retriedRefusal = false
   }
 
   /// Waits until `isReady`, at most `timeout` seconds. Returns whether the connection is ready; `false` at once
@@ -209,7 +280,7 @@ public class HubClient: @MainActor Identifiable {
     return true
   }
 
-  /// Forgets the pinned key, so the next connection learns it again with a v0 token
+  /// Forgets the pinned key, so the next connection pins what the hub proves
   public func forgetHubKey() {
     hubKeys.forget(url)
     sender?.ws.reconnect()
@@ -224,23 +295,6 @@ public class HubClient: @MainActor Identifiable {
     }
     if let refusal { return refusal }
     return sender?.ws.refusal.map { .refused(statusCode: $0.statusCode) }
-  }
-
-  /// Reads `hub/info`. Without a pinned key, pins it and reconnects with a v1 token (and the device certificate).
-  /// A different key than the pinned one is reported and never replaces it.
-  /// - Returns: `false` when the connection is about to be replaced
-  private func learnHubKey(_ sender: ChannelSender<Void>) async -> Bool {
-    guard let info: HubInfo = try? await sender.send("hub/info") else { return true }
-    self.info = info
-    guard let pinned = hubKey else {
-      hubKeys.pin(info.key, for: url)
-      self.sender?.ws.reconnect()
-      return false
-    }
-    if pinned != info.key {
-      onHubKeyError?(.mismatch(pinned: pinned, received: info.key))
-    }
-    return true
   }
 
   public enum HubKeyError: Error, Hashable, Sendable {

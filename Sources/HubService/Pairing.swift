@@ -153,7 +153,7 @@ public enum PairingError: Error, Hashable, Sendable, LocalizedError, CustomStrin
 /// Where a pairing is, for UI. Verification takes at least a second on the hub, so `verifying` is a visible state.
 public enum PairingState: Hashable, Sendable {
   case idle
-  /// Connecting and learning the hub key
+  /// Connecting, and the hub proving its key
   case connecting
   /// `hub/pair` sent; the hub checks one code at a time, at least a second each
   case verifying
@@ -171,7 +171,7 @@ public enum PairingState: Hashable, Sendable {
 public extension HubClient {
   /// Sends a pairing code to the hub and makes this client's key (and its device, when it has one) an owner.
   ///
-  /// Waits until the connection is ready, so the hub key is pinned and `hub/pair` goes over the hub-bound `v: 1`
+  /// Waits until the connection is ready, so the hub key is pinned and `hub/pair` goes over the `v: 1`
   /// connection with the device certificate. Takes at least a second: the hub verifies one code at a time.
   /// - Parameter code: as typed: case, spaces and `-` don't matter
   /// - Parameter progress: called with `.connecting` and `.verifying`

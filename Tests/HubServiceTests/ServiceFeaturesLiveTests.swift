@@ -38,6 +38,8 @@ struct ServiceFeaturesLiveTests {
     let gate = LiveGate()
     let owner = await client(try ownerKey())
     defer { owner.stop() }
+    // A new hub is default-deny, where a stranger reaches only public paths
+    try await owner.send("hub/security/mode/set", ["mode": "default-allow"])
     // The provider runs with the owner key, so its hosting needs no approval
     let host = HubClient(url, keyChain: try ownerKey(), options: .init(hubKeys: HubKeyPins(.memory)))
     host.service.delegates = [gateways]
