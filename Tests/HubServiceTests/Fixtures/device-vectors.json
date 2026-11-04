@@ -15,8 +15,7 @@
       "seed": "0303030303030303030303030303030303030303030303030303030303030303",
       "keyFile": "MC4CAQAwBQYDK2VwBCIEIAMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDMCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=",
       "publicKey": "MCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=",
-      "deviceId": "8cef065b7af83669150b7d32704d3d3e",
-      "safetyCode": "474 971"
+      "deviceId": "8cef065b7af83669150b7d32704d3d3e"
     }
   },
   "auth": {
@@ -261,5 +260,554 @@
       "url": "ws://localhost.example.com:1997",
       "transport": "refused"
     }
-  ]
+  ],
+  "safetyCode": {
+    "description": "n = parseInt(first 8 hex chars of SHA-256 of the UTF-8 of hubcode1:<hub SPKI>:<device SPKI>:<codeValue>, 16) % 1000000, zero-padded, shown as ddd ddd. The hub picks codeValue (32 random bytes, base64url) after it has the key.",
+    "cases": [
+      {
+        "hubKey": "MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=",
+        "deviceKey": "MCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=",
+        "codeValue": "CwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCws",
+        "input": "hubcode1:MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=:MCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=:CwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCws",
+        "code": "741 709"
+      },
+      {
+        "hubKey": "MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=",
+        "deviceKey": "MCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=",
+        "codeValue": "DAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAw",
+        "input": "hubcode1:MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=:MCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=:DAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAw",
+        "code": "210 537"
+      },
+      {
+        "hubKey": "MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=",
+        "deviceKey": "MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=",
+        "codeValue": "CwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCws",
+        "input": "hubcode1:MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=:MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=:CwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCws",
+        "code": "439 189"
+      },
+      {
+        "hubKey": "MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=",
+        "deviceKey": "MCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=",
+        "codeValue": "CwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCws",
+        "input": "hubcode1:MCowBQYDK2VwAyEAgTl3Dqh9F19Wo1Rmw0x+zMuNipG07jeiXfYPW4/Js5Q=:MCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=:CwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCws",
+        "code": "692 895"
+      },
+      {
+        "hubKey": "MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=",
+        "deviceKey": "MCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=",
+        "codeValue": "AAAAAAAAABsNDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0",
+        "input": "hubcode1:MCowBQYDK2VwAyEAiojj3XQJ8ZX9UtstPLpdcspnCb8dlBIb83SIAbQPb1w=:MCowBQYDK2VwAyEA7UkoxijRwsbq6QM4kFmVYSlZJzpcY/k2NsFGFKyHN9E=:AAAAAAAAABsNDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0NDQ0",
+        "code": "008 506"
+      }
+    ]
+  },
+  "names": {
+    "description": "Hub side only (protocol.md section 13). normalized is what names are compared by, clean what a name shows as, unique the name a device asking for `asked` gets while `held` are taken.",
+    "normalized": [
+      {
+        "input": "Alex",
+        "normalized": "alex"
+      },
+      {
+        "input": "ALEX",
+        "normalized": "alex"
+      },
+      {
+        "input": " Al ex ",
+        "normalized": "alex"
+      },
+      {
+        "input": "A​lex",
+        "normalized": "alex"
+      },
+      {
+        "input": "A­lex‍",
+        "normalized": "alex"
+      },
+      {
+        "input": "﻿Alex",
+        "normalized": "alex"
+      },
+      {
+        "input": "Аlex",
+        "normalized": "alex"
+      },
+      {
+        "input": "Аlеx",
+        "normalized": "alex"
+      },
+      {
+        "input": "A1ex",
+        "normalized": "alex"
+      },
+      {
+        "input": "AIex",
+        "normalized": "alex"
+      },
+      {
+        "input": "Ałex",
+        "normalized": "alex"
+      },
+      {
+        "input": "Ａｌｅｘ",
+        "normalized": "alex"
+      },
+      {
+        "input": "Álex",
+        "normalized": "alex"
+      },
+      {
+        "input": "Álex",
+        "normalized": "alex"
+      },
+      {
+        "input": "Al-ex",
+        "normalized": "alex"
+      },
+      {
+        "input": "Al_ex",
+        "normalized": "alex"
+      },
+      {
+        "input": "Al.ex",
+        "normalized": "alex"
+      },
+      {
+        "input": "Alex's Mac",
+        "normalized": "alexsmac"
+      },
+      {
+        "input": "Alexs Mac",
+        "normalized": "alexsmac"
+      },
+      {
+        "input": "Mac",
+        "normalized": "mac"
+      },
+      {
+        "input": "Мас",
+        "normalized": "mac"
+      },
+      {
+        "input": "rnac",
+        "normalized": "mac"
+      },
+      {
+        "input": "Clark",
+        "normalized": "dark"
+      },
+      {
+        "input": "Dark",
+        "normalized": "dark"
+      },
+      {
+        "input": "Ιvan",
+        "normalized": "lvan"
+      },
+      {
+        "input": "Straße",
+        "normalized": "strasse"
+      },
+      {
+        "input": "STRASSE",
+        "normalized": "strasse"
+      },
+      {
+        "input": "Νikos",
+        "normalized": "nlkos"
+      },
+      {
+        "input": "Ηelen",
+        "normalized": "helen"
+      },
+      {
+        "input": "Υan",
+        "normalized": "yan"
+      },
+      {
+        "input": "📱",
+        "normalized": "📱"
+      },
+      {
+        "input": "📱️",
+        "normalized": "📱"
+      },
+      {
+        "input": "👩‍💻",
+        "normalized": "👩💻"
+      },
+      {
+        "input": "Alex-2",
+        "normalized": "alex2"
+      },
+      {
+        "input": "Alex 2",
+        "normalized": "alex2"
+      },
+      {
+        "input": "alex2",
+        "normalized": "alex2"
+      },
+      {
+        "input": "北京",
+        "normalized": "北京"
+      },
+      {
+        "input": "राम",
+        "normalized": "राम"
+      },
+      {
+        "input": "Device",
+        "normalized": "devlce"
+      },
+      {
+        "input": "---",
+        "normalized": ""
+      },
+      {
+        "input": "​​",
+        "normalized": ""
+      },
+      {
+        "input": "",
+        "normalized": ""
+      }
+    ],
+    "same": [
+      [
+        "Alex",
+        "ALEX",
+        " Al ex ",
+        "A​lex",
+        "A­lex‍",
+        "﻿Alex",
+        "Аlex",
+        "Аlеx",
+        "A1ex",
+        "AIex",
+        "Ałex",
+        "Ａｌｅｘ",
+        "Álex",
+        "Álex",
+        "Al-ex",
+        "Al_ex",
+        "Al.ex"
+      ],
+      [
+        "Alex's Mac",
+        "Alexs Mac"
+      ],
+      [
+        "Mac",
+        "Мас",
+        "rnac"
+      ],
+      [
+        "Clark",
+        "clark"
+      ],
+      [
+        "Straße",
+        "STRASSE"
+      ],
+      [
+        "Alex-2",
+        "Alex 2",
+        "alex2"
+      ],
+      [
+        "📱",
+        "📱️"
+      ]
+    ],
+    "different": [
+      [
+        "Alex",
+        "Alec"
+      ],
+      [
+        "Alex",
+        "Alexa"
+      ],
+      [
+        "Alex",
+        "Alex-2"
+      ],
+      [
+        "Mac",
+        "Max"
+      ],
+      [
+        "北京",
+        "南京"
+      ],
+      [
+        "📱",
+        "💻"
+      ]
+    ],
+    "lookalikes": [
+      {
+        "letter": "a",
+        "others": "аɑαꭺ⍺"
+      },
+      {
+        "letter": "b",
+        "others": "вьβƅ"
+      },
+      {
+        "letter": "c",
+        "others": "сꮯ"
+      },
+      {
+        "letter": "d",
+        "others": "ԁꭰđ"
+      },
+      {
+        "letter": "e",
+        "others": "еεєҽꭼ"
+      },
+      {
+        "letter": "f",
+        "others": "ƒғ"
+      },
+      {
+        "letter": "g",
+        "others": "ɡցԍꮐ"
+      },
+      {
+        "letter": "h",
+        "others": "һнհꮋħ"
+      },
+      {
+        "letter": "j",
+        "others": "јϳ"
+      },
+      {
+        "letter": "k",
+        "others": "кκꮶĸ"
+      },
+      {
+        "letter": "l",
+        "others": "iіıιɩӏǀ|ꮮוا١۱ꓲł1"
+      },
+      {
+        "letter": "m",
+        "others": "мꮇϻ"
+      },
+      {
+        "letter": "n",
+        "others": "пηո"
+      },
+      {
+        "letter": "o",
+        "others": "оοσςօᴏ০०ⲟø0"
+      },
+      {
+        "letter": "p",
+        "others": "рρⲣꮲ"
+      },
+      {
+        "letter": "q",
+        "others": "ԛզ"
+      },
+      {
+        "letter": "r",
+        "others": "гꭱɾ"
+      },
+      {
+        "letter": "s",
+        "others": "ѕꮪƽ"
+      },
+      {
+        "letter": "t",
+        "others": "тτꭲŧ"
+      },
+      {
+        "letter": "u",
+        "others": "υսʋ"
+      },
+      {
+        "letter": "v",
+        "others": "νѵꮩᴠ"
+      },
+      {
+        "letter": "w",
+        "others": "ԝѡωꮃᴡ"
+      },
+      {
+        "letter": "x",
+        "others": "хχ"
+      },
+      {
+        "letter": "y",
+        "others": "уγүꭹʏ"
+      },
+      {
+        "letter": "z",
+        "others": "ζᴢꮓ"
+      },
+      {
+        "letter": "3",
+        "others": "з"
+      },
+      {
+        "letter": "ss",
+        "others": "ß"
+      },
+      {
+        "letter": "ae",
+        "others": "æ"
+      },
+      {
+        "letter": "oe",
+        "others": "œ"
+      }
+    ],
+    "clean": [
+      {
+        "input": "Alex",
+        "clean": "Alex"
+      },
+      {
+        "input": "  Alex  ",
+        "clean": "Alex"
+      },
+      {
+        "input": "Al‮ex",
+        "clean": "Alex"
+      },
+      {
+        "input": "Al\nex",
+        "clean": "Alex"
+      },
+      {
+        "input": "Al\u0000ex",
+        "clean": "Alex"
+      },
+      {
+        "input": "⁦Alex⁩",
+        "clean": "Alex"
+      },
+      {
+        "input": "👩‍💻",
+        "clean": "👩‍💻"
+      },
+      {
+        "input": "Alex​",
+        "clean": "Alex​"
+      },
+      {
+        "input": "---",
+        "clean": "Device"
+      },
+      {
+        "input": "​",
+        "clean": "Device"
+      },
+      {
+        "input": "",
+        "clean": "Device"
+      },
+      {
+        "input": "   ",
+        "clean": "Device"
+      },
+      {
+        "input": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "clean": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+      },
+      {
+        "input": "éééééééééééééééééééééééééééééééééééééééé",
+        "clean": "éééééééééééééééééééééééééééééééé"
+      }
+    ],
+    "unique": [
+      {
+        "held": [],
+        "asked": "Alex",
+        "name": "Alex"
+      },
+      {
+        "held": [
+          "Alex"
+        ],
+        "asked": "Alex",
+        "name": "Alex-2"
+      },
+      {
+        "held": [
+          "Alex"
+        ],
+        "asked": "ALEX",
+        "name": "ALEX-2"
+      },
+      {
+        "held": [
+          "Alex"
+        ],
+        "asked": "Аlex",
+        "name": "Аlex-2"
+      },
+      {
+        "held": [
+          "Alex",
+          "Alex-2"
+        ],
+        "asked": "Alex",
+        "name": "Alex-3"
+      },
+      {
+        "held": [
+          "Alex",
+          "alex 2",
+          "ALEX_3"
+        ],
+        "asked": "alex",
+        "name": "alex-4"
+      },
+      {
+        "held": [
+          "Alex-2"
+        ],
+        "asked": "Alex",
+        "name": "Alex"
+      },
+      {
+        "held": [
+          "Alex-2"
+        ],
+        "asked": "Alex-2",
+        "name": "Alex-2-2"
+      },
+      {
+        "held": [
+          "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+        ],
+        "asked": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "name": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-2"
+      },
+      {
+        "held": [
+          "éééééééééééééééééééééééééééééééé"
+        ],
+        "asked": "éééééééééééééééééééééééééééééééé",
+        "name": "ééééééééééééééééééééééééééééééé-2"
+      },
+      {
+        "held": [
+          "Device"
+        ],
+        "asked": "​",
+        "name": "Device-2"
+      },
+      {
+        "held": [
+          "Mac Studio"
+        ],
+        "asked": "Mac  Studio",
+        "name": "Mac  Studio-2"
+      }
+    ]
+  }
 }

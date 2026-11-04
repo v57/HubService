@@ -41,9 +41,11 @@ public struct Device: Codable, Hashable, Identifiable, Sendable {
   public var lastSeen: Date?
   public var capabilities: Capabilities?
   public var services: [Service]
+  /// What its safety code covers: for owners and the device's own person
+  public var codeValue: String?
 
   enum CodingKeys: String, CodingKey {
-    case id, key, name, platform, os, arch, parent, approved, revoked, online, network, overlay, lastSeen, capabilities, services
+    case id, key, name, platform, os, arch, parent, approved, revoked, online, network, overlay, lastSeen, capabilities, services, codeValue
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -62,6 +64,7 @@ public struct Device: Codable, Hashable, Identifiable, Sendable {
     lastSeen = (try? container.decodeIfPresent(String.self, forKey: .lastSeen)).flatMap(Self.date)
     capabilities = try? container.decodeIfPresent(Capabilities.self, forKey: .capabilities)
     services = (try? container.decodeIfPresent([Service].self, forKey: .services)) ?? []
+    codeValue = try? container.decodeIfPresent(String.self, forKey: .codeValue)
   }
   public func encode(to encoder: any Encoder) throws {
     var container = encoder.container(keyedBy: CodingKeys.self)
@@ -80,6 +83,7 @@ public struct Device: Codable, Hashable, Identifiable, Sendable {
     try container.encodeIfPresent(lastSeen.map(ISO8601DateFormatter.hubNetworkDateString), forKey: .lastSeen)
     try container.encodeIfPresent(capabilities, forKey: .capabilities)
     try container.encode(services, forKey: .services)
+    try container.encodeIfPresent(codeValue, forKey: .codeValue)
   }
   static func date(_ value: String) -> Date? {
     ISO8601DateFormatter.hubNetworkDate(from: value)
@@ -92,10 +96,38 @@ public struct PendingDevice: Codable, Hashable, Identifiable, Sendable {
   public var name: String?
   public var platform: String?
   public var parent: String?
-  /// `ddd ddd`, shown on both devices; compare before approving
+  /// `ddd ddd` as the hub says it. Show `verifiedCode(hubKey:)` instead, which holds it to the key you pinned.
   public var safetyCode: String
+  /// What the code covers besides the two keys, picked by the hub. Nil from a hub from before these.
+  public var codeValue: String?
   public var firstSeen: String?
   public var firstSeenDate: Date? { firstSeen.flatMap(Device.date) }
+
+  /// The code to compare with the one on the device, computed from your pinned hub key. Nil when the hub sent no value
+  /// or says otherwise: then it isn't the hub you pinned, or not one that can show a code that means anything.
+  public func verifiedCode(hubKey: String) -> String? {
+    guard let codeValue else { return nil }
+    let code = DeviceKey.safetyCode(hubKey: hubKey, deviceKey: key, codeValue: codeValue)
+    return code == safetyCode ? code : nil
+  }
+}
+
+/// `hub/device/request`: where this connection's device stands
+public struct DeviceRequest: Codable, Hashable, Sendable {
+  public enum Status: String, Codable, Hashable, Sendable {
+    case waiting, pending, approved
+  }
+  public var id: String
+  public var status: Status
+  /// What it asks for while pending, its final name once approved
+  public var name: String?
+  /// What the code covers besides the two keys. No code exists before it arrives.
+  public var codeValue: String?
+
+  /// The code this device shows, computed from the hub key it pinned and its own key. Never a code without the hub's value.
+  public func safetyCode(hubKey: String, deviceKey: String) -> String? {
+    codeValue.map { DeviceKey.safetyCode(hubKey: hubKey, deviceKey: deviceKey, codeValue: $0) }
+  }
 }
 
 /// Claims a device makes about itself. They steer placement and UI and never grant access.
@@ -373,7 +405,13 @@ public struct HubDevicesAPI {
   public func pending() -> Values<Void, EmptyCodable, EmptyCodable, [PendingDevice]> {
     client.values("hub/devices/pending")
   }
-  /// `hub/devices/data`: the latest live data of a device, then updates
+  /// `hub/device/request`: where this connection's device stands, with what its safety code covers; fails with
+  /// `no device certificate` on a connection without one
+  public func request() -> Values<Void, EmptyCodable, EmptyCodable, DeviceRequest> {
+    client.values("hub/device/request")
+  }
+  /// `hub/devices/data`: the latest live data of a device, then updates. `device not found` for a device that isn't
+  /// the caller's own and it isn't an owner
   public func data(_ id: String) -> Values<Void, ID, EmptyCodable, DeviceData> {
     client.values("hub/devices/data", ID(id: id))
   }

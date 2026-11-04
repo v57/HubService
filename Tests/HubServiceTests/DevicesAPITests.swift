@@ -52,6 +52,14 @@ struct DevicesAPITests {
   func misc() throws {
     let pending = try JSONDecoder().decode(PendingDevice.self, from: Data(#"{"id":"i","key":"k","safetyCode":"474 971","firstSeen":"2026-10-20T10:00:00Z"}"#.utf8))
     #expect(pending.safetyCode == "474 971" && pending.firstSeenDate != nil)
+    #expect(pending.verifiedCode(hubKey: "h") == nil, "a hub from before values has no code to trust")
+    let value = "CwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCwsLCws"
+    let code = DeviceKey.safetyCode(hubKey: "h", deviceKey: "k", codeValue: value)
+    let current = try JSONDecoder().decode(PendingDevice.self, from: Data(#"{"id":"i","key":"k","safetyCode":"\#(code)","codeValue":"\#(value)"}"#.utf8))
+    #expect(current.verifiedCode(hubKey: "h") == code)
+    #expect(current.verifiedCode(hubKey: "another") == nil, "the hub's code has to hold for the key this side pinned")
+    let request = try JSONDecoder().decode(DeviceRequest.self, from: Data(#"{"id":"i","status":"waiting"}"#.utf8))
+    #expect(request.status == .waiting && request.safetyCode(hubKey: "h", deviceKey: "k") == nil)
     let mode = try JSONDecoder().decode(SecurityMode.self, from: Data(#"{"mode":"default-deny","requireV1":false}"#.utf8))
     #expect(mode.mode == .defaultDeny)
     let info = try JSONDecoder().decode(HubInfo.self, from: Data(#"{"key":"K","protocol":1,"pro":true,"mode":"default-allow"}"#.utf8))

@@ -24,15 +24,17 @@ public struct DeviceKey: Sendable {
   public var publicKey: String { keyChain.publicKey() }
   /// First 32 lowercase hex characters of SHA-256 of the device SPKI
   public var id: String { Self.id(publicKey: publicKey) }
-  /// Six digits shown as `ddd ddd` on both devices during approval
-  public var safetyCode: String { Self.safetyCode(publicKey: publicKey) }
 
   public static func id(publicKey: String) -> String {
     String(digest(publicKey).prefix(32))
   }
 
-  public static func safetyCode(publicKey: String) -> String {
-    let n = (UInt32(digest(publicKey).prefix(8), radix: 16) ?? 0) % 1_000_000
+  /// Six digits shown as `ddd ddd` on both devices during approval. `codeValue` comes from the hub, on
+  /// `hub/device/request`; `hubKey` is the key this side pinned, so equal codes mean both see the same hub.
+  public static func safetyCode(hubKey: String, deviceKey: String, codeValue: String) -> String {
+    let hash = SHA256.hash(data: Data("hubcode1:\(hubKey):\(deviceKey):\(codeValue)".utf8))
+    let hex = hash.map { String(format: "%02x", $0) }.joined()
+    let n = (UInt32(hex.prefix(8), radix: 16) ?? 0) % 1_000_000
     let digits = String(n).leftPadded(to: 6)
     return "\(digits.prefix(3)) \(digits.suffix(3))"
   }

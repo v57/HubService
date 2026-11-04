@@ -15,8 +15,17 @@ struct Vectors: Decodable {
     var keyFile: String
     var publicKey: String
     var deviceId: String?
-    var safetyCode: String?
   }
+  struct SafetyCode: Decodable {
+    struct Case: Decodable {
+      var hubKey: String
+      var deviceKey: String
+      var codeValue: String
+      var code: String
+    }
+    var cases: [Case]
+  }
+  var safetyCode: SafetyCode
   struct Token: Decodable {
     var signedData: String
     var signature: String

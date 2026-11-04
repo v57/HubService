@@ -15,7 +15,9 @@ struct CertificateTests {
     let vector = vectors.keys["device"]!
     let device = DeviceKey(try key(vector))
     #expect(device.id == vector.deviceId)
-    #expect(device.safetyCode == vector.safetyCode)
+    for code in vectors.safetyCode.cases {
+      #expect(DeviceKey.safetyCode(hubKey: code.hubKey, deviceKey: code.deviceKey, codeValue: code.codeValue) == code.code)
+    }
     #expect(DeviceKey.id(publicKey: vector.publicKey) == vector.deviceId)
   }
 
