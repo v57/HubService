@@ -14,12 +14,22 @@ Hub Service allows you to connect to Hub, use it's api or share your own.
 - Display and interract with apps
 - Post your own apps
 
+### Libraries
+
+| Library | Purpose | Platforms | Import |
+|---|---|---|---|
+| [HubService](docs/HubService.md) | Connect to a hub as a client and a service: `HubClient`, post and stream, options (who may call, rate limits, shutdown), API descriptions (`JSONSchema`, `apiList()`), auth v2 and refusals, device certificates and the devices API, pairing, apps as JSON, Hub Network shares | macOS 14, iOS 17, visionOS 1, tvOS 17, watchOS 10, Mac Catalyst 17; Linux (builds); Windows and Android in the manifest, untested | `.product(name: "HubService", package: "HubService")`, `import HubService` |
+| [HubUI](docs/HubUI.md) | SwiftUI views that draw services' apps, widgets and web apps, a storage file browser and pairing status, as in the Hub app | The same Apple platforms (web apps need WebKit); Linux on v57/SwiftUI (builds, charts and web apps not available) | `.product(name: "HubUI", package: "HubService")`, `import HubUI` |
+
+Add the package with `.package(url: "https://github.com/v57/HubService.git", branch: "main")`. The concepts (paths,
+settings, apps, the wire contract) are explained in [hub-service's guide](https://github.com/v57/hub-service/blob/main/docs/README.md),
+the TypeScript reference this package follows.
 
 ### Getting started
 ```swift
 // Create hub connection
 let url: URL // "wss://example.com/hub"
-let client = HubClient(url, keyChain: KeyChain(keyChain: "com.example.YourApp"), connect: true)
+let client = HubClient(url, keyChain: .keychain("com.example.YourApp"))
 
 // Host your service
 client.service.post("myservice/x2") { (value: Int) in
