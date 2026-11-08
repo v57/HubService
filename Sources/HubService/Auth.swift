@@ -104,6 +104,36 @@ public enum HubHandshake {
     }
   }
 
+  /// Whether the server at `url` is a hub from before auth v2: it answers `hub/info` with a key but no proof, or (hub-lite)
+  /// has no `hub/info` at all. Such a hub gets nothing from this client, which never falls back to v0; the user has to
+  /// update it. `false` when nothing answers.
+  public static func needsUpdate(_ url: URL, timeout: TimeInterval = 5) async -> Bool {
+    let nonce = makeNonce()
+    let probe = Channel<Void>().connect(url)
+    defer { probe.stop() }
+    return await withTaskCancellationHandler {
+      do {
+        let info: HubInfo = try await probe.send("hub/info", Request(nonce: nonce), options: SendOptions(timeout: timeout))
+        return isOutdated(info)
+      } catch {
+        return isOutdated(error)
+      }
+    } onCancel: {
+      Task { @MainActor in probe.stop() }
+    }
+  }
+
+  /// An answer from a hub from before auth v2: a key, but no proof and no challenge
+  public nonisolated static func isOutdated(_ info: HubInfo) -> Bool {
+    !info.key.isEmpty && info.proof == nil && info.challenge == nil
+  }
+
+  /// hub-lite, which predates `hub/info`, answers it with `api not found`
+  public nonisolated static func isOutdated(_ error: Error) -> Bool {
+    guard let error = error as? ChannelError else { return false }
+    return error.code == .notFound || error.text == "api not found"
+  }
+
   /// Asks every address at once and takes the first that proves `pinned`, or with no pin what the first address proves.
   /// Only the first address, the one the hub is known by, can report a mismatch: the others are just other ways in.
   public static func ask(_ urls: [URL], pinned: String?, timeout: TimeInterval = 5) async -> Answer {

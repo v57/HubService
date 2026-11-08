@@ -152,6 +152,9 @@ public class HubClient: @MainActor Identifiable {
     case refused(statusCode: Int)
     /// This client doesn't connect: credentials would cross networks in the clear. The address needs `wss://`.
     case plaintextNotAllowed
+    /// The hub is from before auth v2: it can't prove its key, so this client sends it nothing (no v0 fallback). The
+    /// client looks again every 30 seconds, so it connects once the hub is updated.
+    case hubNeedsUpdate
 
     public var description: String {
       switch self {
@@ -160,9 +163,15 @@ public class HubClient: @MainActor Identifiable {
       case .hubNotAvailable: "The hub only accepts devices it already knows."
       case .refused(let statusCode): "The hub refused the connection (HTTP \(statusCode))."
       case .plaintextNotAllowed: "This address isn't encrypted and isn't on this network, so this device doesn't connect to it. Use a wss:// address."
+      case .hubNeedsUpdate: HubClient.hubNeedsUpdateText
       }
     }
   }
+
+  /// What `Refusal.hubNeedsUpdate` tells the user, with the ways a Hub is updated
+  public nonisolated static let hubNeedsUpdateText = "This Hub needs an update: it can't prove who it is, so this device "
+    + "sends it nothing. On the Hub's machine, run `hub update`, or choose Update All on the Launcher page of an older "
+    + "Hub app. For Docker, run `docker pull v57dev/hub` and recreate the container."
 
   /// Headers for one connection attempt, after the hub proves its key. Waits while nothing answers with a proof, since
   /// the hub gets nothing before that; a reconnect or `stop()` ends the wait.
@@ -188,6 +197,12 @@ public class HubClient: @MainActor Identifiable {
         onHubKeyError?(.mismatch(pinned: pinned, received: current))
         return [:]
       case .none:
+        // A hub from before auth v2 answers without a proof: say so, and never fall back to v0
+        if await HubHandshake.needsUpdate(url) {
+          guard handshake == self.handshake else { return [:] }
+          refuseConnecting(.hubNeedsUpdate)
+          return [:]
+        }
         try? await Task.sleep(nanoseconds: delay)
         delay = min(delay * 2, 5_000_000_000)
       }
