@@ -28,6 +28,8 @@ public class HubService {
     }
   }
   private var options = [String: Options]()
+  /// What each path says about itself per kind, for `hub/service/update` (protocol.md section 15)
+  private var descriptions = [ApiDescription.Kind: [String: ApiDescription]]()
   private var serviceUpdatesTask: Task<Void, Error>? {
     didSet { oldValue?.cancel() }
   }
@@ -52,36 +54,56 @@ public class HubService {
     self.channel = channel
   }
   public func post<Input: Decodable & Sendable, Output: Encodable & Sendable>(_ path: String, options: Options? = nil, request: @escaping (@Sendable (Input) async throws -> Output)) -> Self {
-    add(path: path, options: options, decode: { try $0.body() as Input }) { input in
+    describe(path, .post, options, input: Input.self, output: Output.self)
+    return add(path: path, options: options, decode: { try $0.body() as Input }) { input in
       try await request(input)
     }
   }
   public func post<Input: Decodable & Sendable>(_ path: String, options: Options? = nil, request: @escaping (@Sendable (Input) async throws -> Void)) -> Self {
-    add(path: path, options: options, decode: { try $0.body() as Input }) { input in
+    describe(path, .post, options, input: Input.self)
+    return add(path: path, options: options, decode: { try $0.body() as Input }) { input in
       try await request(input)
       return NoOutput()
     }
   }
   public func post<Output: Encodable & Sendable>(_ path: String, options: Options? = nil, request: @escaping (@Sendable () async throws -> Output)) -> Self {
-    add(path: path, options: options, decode: { _ in }) {
+    describe(path, .post, options, output: Output.self)
+    return add(path: path, options: options, decode: { _ in }) {
       try await request()
     }
   }
   public func post(_ path: String, options: Options? = nil, request: @escaping (@Sendable () async throws -> Void)) -> Self {
-    add(path: path, options: options, decode: { _ in }) {
+    describe(path, .post, options)
+    return add(path: path, options: options, decode: { _ in }) {
       try await request()
       return NoOutput()
     }
   }
   public func stream<Input: Decodable & Sendable>(_ path: String, options: Options? = nil, request: @escaping @Sendable (Input, AsyncThrowingStream<Encodable & Sendable, Error>.Continuation) async throws -> Void) -> Self {
-    add(path: path, options: options, decode: { try $0.body() as Input }) { input, continuation in
+    describe(path, .stream, options, input: Input.self)
+    return add(path: path, options: options, decode: { try $0.body() as Input }) { input, continuation in
       try await request(input, continuation)
     }
   }
   public func stream(_ path: String, options: Options? = nil, request: @escaping @Sendable (AsyncThrowingStream<Encodable & Sendable, Error>.Continuation) async throws -> Void) -> Self {
-    add(path: path, options: options, decode: { _ in }) { _, continuation in
+    describe(path, .stream, options)
+    return add(path: path, options: options, decode: { _ in }) { _, continuation in
       try await request(continuation)
     }
+  }
+  /// Keeps what `options` say about a path, with schemas derived from the handler's Codable types where the options
+  /// give none (`Options.deriveSchemas`)
+  private func describe(_ path: String, _ kind: ApiDescription.Kind, _ options: Options?, input: Any.Type? = nil, output: Any.Type? = nil) {
+    let derive = options?.deriveSchemas ?? true
+    let description = ApiDescription(path: path, kind: kind, title: options?.title, description: options?.description,
+      inputSchema: options?.inputSchema ?? (derive ? input.flatMap { JSONSchema.of($0) } : nil),
+      outputSchema: options?.outputSchema ?? (derive ? output.flatMap { JSONSchema.of($0) } : nil),
+      annotations: options?.annotations)
+    descriptions[kind, default: [:]][path] = description
+  }
+  /// What this service says about its paths (`hub/api/list` once the hub has them)
+  public var apiDescriptions: [ApiDescription] {
+    descriptions.values.flatMap(\.values).sorted { ($0.path, $0.kind?.rawValue ?? "") < ($1.path, $1.kind?.rawValue ?? "") }
   }
   /// Checks the request on the main actor (the decoding container isn't thread-safe): readiness, `auth`, `groups` and
   /// the rate limit, then decodes the body. The handler runs with `HubRequest.current` set once the `permission` check
@@ -272,21 +294,29 @@ public class HubService {
   }
   func sendServiceUpdates(first: Bool) async throws {
     guard let sender else { return }
-    var api = Set(channel.postApi.keys).union(channel.streamApi.keys)
+    var disabledApis = Set<String>()
     var disabledApps = Set<String>()
     groups.forEach { group in
       if !group.isEnabled {
-        api.subtract(group.apis)
+        disabledApis.formUnion(group.apis)
         disabledApps.formUnion(group.apps)
       }
     }
     let apps = apps.filter { !disabledApps.contains($0.path) }
     // A service that isn't ready registers its paths without taking calls
-    let update = HubService.Update(services: api.map { ServiceHeader(path: $0, options: options[$0]) }, apps: apps, reporter: isReporter ? true : nil,
+    let update = HubService.Update(services: serviceHeaders(disabled: disabledApis), apps: apps, reporter: isReporter ? true : nil,
       draining: acceptsCalls ? nil : true)
     if !first || !update.isEmpty {
       try await sender.send("hub/service/update", update)
     }
+  }
+  /// One header per path and kind, with what it says about itself (protocol.md section 15)
+  func serviceHeaders(disabled: Set<String> = []) -> [ServiceHeader] {
+    let header = { (kind: ApiDescription.Kind, path: String) in
+      ServiceHeader(path: path, kind: kind, options: self.options[path], description: self.descriptions[kind]?[path])
+    }
+    return channel.postApi.keys.filter { !disabled.contains($0) }.sorted().map { header(.post, $0) }
+      + channel.streamApi.keys.filter { !disabled.contains($0) }.sorted().map { header(.stream, $0) }
   }
   public func group(enabled: Bool) -> Group {
     let group = Group(service: self, isEnabled: enabled)
@@ -352,9 +382,29 @@ public class HubService {
     public var rateLimit: RateLimit?
     /// What `shutdown` does with a running call; `.wait` for posts and `.end` for streams by default
     public var shutdown: ShutdownMode?
+    /// A short name for people and agents (`hub/api/list`)
+    public var title: String?
+    /// What the path does, when to use it and what it needs; plain text (`hub/api/list`)
+    public var description: String?
+    /// JSON schema of the body; derived from the handler's input type when nil. Published only, not checked
+    public var inputSchema: JSONSchema?
+    /// JSON schema of the answer, or of each value of a stream; derived from a `Decodable` output type when nil
+    public var outputSchema: JSONSchema?
+    /// MCP's hints: read-only, destructive, idempotent, open world
+    public var annotations: ApiAnnotations?
+    /// Derives `inputSchema` and `outputSchema` from the handler's Codable types when they're nil
+    public var deriveSchemas: Bool
     public init(limit: Int? = nil, permissions: Permissions? = nil, isPublic: Bool = false, auth: Auth? = nil, groups: [String] = [],
-      permission: String? = nil, rateLimit: RateLimit? = nil, shutdown: ShutdownMode? = nil)
+      permission: String? = nil, rateLimit: RateLimit? = nil, shutdown: ShutdownMode? = nil, title: String? = nil,
+      description: String? = nil, inputSchema: JSONSchema? = nil, outputSchema: JSONSchema? = nil, annotations: ApiAnnotations? = nil,
+      deriveSchemas: Bool = true)
     {
+      self.title = title
+      self.description = description
+      self.inputSchema = inputSchema
+      self.outputSchema = outputSchema
+      self.annotations = annotations
+      self.deriveSchemas = deriveSchemas
       self.limit = limit
       self.permissions = permissions
       self.isPublic = isPublic
@@ -436,11 +486,24 @@ struct ServiceHeader: Encodable, Sendable {
   let limit: Int?
   let permissions: HubService.Permissions?
   let `public`: Bool?
-  init(path: String, options: HubService.Options?) {
+  /// Hubs before descriptions ignore it and the fields after it (protocol.md section 15)
+  let kind: ApiDescription.Kind?
+  let title: String?
+  let description: String?
+  let inputSchema: JSONSchema?
+  let outputSchema: JSONSchema?
+  let annotations: ApiAnnotations?
+  init(path: String, kind: ApiDescription.Kind? = nil, options: HubService.Options?, description: ApiDescription? = nil) {
     self.path = path
     self.limit = options?.limit
     self.permissions = options?.permissions
     self.public = options?.isPublic == true ? true : nil
+    self.kind = kind
+    self.title = description?.title
+    self.description = description?.description
+    self.inputSchema = description?.inputSchema
+    self.outputSchema = description?.outputSchema
+    self.annotations = description?.annotations
   }
 }
 
