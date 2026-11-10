@@ -295,6 +295,13 @@ public class HubClient: @MainActor Identifiable {
     return true
   }
 
+  /// Tries at once instead of waiting out the backoff: a dropped connection connects again, one that is still opening
+  /// (or waiting for the hub to prove its key) starts over, an open one is checked with a ping. Call it when the app
+  /// comes back to the front: an attempt iOS suspended may never finish on its own.
+  public func reconnectNow() {
+    sender?.ws.reconnectNow()
+  }
+
   /// Forgets the pinned key, so the next connection pins what the hub proves
   public func forgetHubKey() {
     hubKeys.forget(url)
