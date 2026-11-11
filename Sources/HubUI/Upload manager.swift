@@ -85,6 +85,9 @@ final class UploadManager: Sendable {
     session.tasks += 1
     defer { session.tasks -= 1 }
     for url in files {
+      // A file or folder picked with fileImporter or a drop is readable only while its security-scoped access lasts:
+      // every upload from it holds the access until it ends. Without it iOS read nothing and the file was stored empty
+      let access = SecurityScopedAccess(url)
       if url.hasDirectoryPath {
         var content = [URL]()
         url.contents(array: &content)
@@ -97,7 +100,7 @@ final class UploadManager: Sendable {
           task.progress.total = url.fileSize
           set(path: file.target, hub: hub, context: context, task: task)
           session.files.append(file)
-          upload(file: file, with: task, to: hub, context: context) { result in
+          upload(file: file, with: task, to: hub, context: context, access: access) { result in
             session.completeTask(result: result)
           }
         }
@@ -108,8 +111,8 @@ final class UploadManager: Sendable {
         task.progress.total = url.fileSize
         session.files.append(file)
         set(path: file.target, hub: hub, context: context, task: task)
-        
-        upload(file: file, with: task, to: hub, context: context) { result in
+
+        upload(file: file, with: task, to: hub, context: context, access: access) { result in
           session.completeTask(result: result)
         }
       }
@@ -131,8 +134,8 @@ final class UploadManager: Sendable {
       tasks -= 1
     }
   }
-  private func upload(file: UploadingFile, with task: ObservableProgress, to hub: HubClient, context: HubContext?, completion: @escaping (Result<Void, Error>) -> Void) {
-    let task = PendingTask(hub: hub, context: context, file: file, progress: task, completion: completion)
+  private func upload(file: UploadingFile, with task: ObservableProgress, to hub: HubClient, context: HubContext?, access: SecurityScopedAccess, completion: @escaping (Result<Void, Error>) -> Void) {
+    let task = PendingTask(hub: hub, context: context, file: file, progress: task, access: access, completion: completion)
     pending.append(task)
     if running.isEmpty {
       nextPending()
@@ -202,10 +205,15 @@ final class UploadManager: Sendable {
     let context: HubContext?
     let file: UploadingFile
     let progress: ObservableProgress
+    /// Released with the task, after its upload ended
+    let access: SecurityScopedAccess
     let completion: (Result<Void, Error>) -> Void
     @MainActor
     func start() async throws {
       do {
+        // A file in iCloud Drive may not be on the device yet: a coordinated read downloads it first
+        try await file.content.downloadedForReading()
+        progress.progress.total = file.content.fileSize
         let url: URL = try await hub.send("s3/write", file.target, context: context)
         let manager = UploadManager.main
         _ = try await manager.session.upload(file: file.content, to: url, delegate: manager.delegate, progress: progress)
@@ -468,5 +476,45 @@ struct UploadingFile: Hashable {
 public enum HubStorageUpload {
   @MainActor public static func upload(files: [URL], directory: String, to hub: HubClient, context: HubContext? = nil) {
     _ = UploadManager.main.upload(files: files, directory: directory, to: hub, context: context)
+  }
+}
+
+/// A picked file's or folder's security-scoped access, from creation until the last upload holding it ends. URLs that
+/// need none (a file in the app's own container) pass through.
+final class SecurityScopedAccess: @unchecked Sendable {
+  private let url: URL
+  private let isAccessing: Bool
+  init(_ url: URL) {
+    self.url = url
+#if canImport(Darwin)
+    isAccessing = url.startAccessingSecurityScopedResource()
+#else
+    isAccessing = false
+#endif
+  }
+  deinit {
+#if canImport(Darwin)
+    if isAccessing { url.stopAccessingSecurityScopedResource() }
+#endif
+  }
+}
+
+extension URL {
+  /// Waits for a coordinated read, which downloads a file iCloud Drive keeps only in the cloud
+  func downloadedForReading() async throws {
+#if canImport(Darwin)
+    let url = self
+    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+      DispatchQueue.global(qos: .userInitiated).async {
+        var coordinatorError: NSError?
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinatorError) { _ in }
+        if let coordinatorError {
+          continuation.resume(throwing: coordinatorError)
+        } else {
+          continuation.resume()
+        }
+      }
+    }
+#endif
   }
 }
