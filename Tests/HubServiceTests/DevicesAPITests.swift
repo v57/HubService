@@ -14,10 +14,12 @@ struct DevicesAPITests {
       "memory":68719476736,"disks":[{"name":"Backup Disk","free":1200000000000}],"power":"ac",
       "tools":{"xcode":"27.0","docker":true,"other":1},"custom":{"a":1}},
       "services":[{"key":"S","instance":"s3-local/Backup Disk","online":true,"paths":["s3/read"]}]},
-     {"id":"x","key":"K2","approved":false,"revoked":true,"online":false,"lastSeen":"bad","services":[]}]
+     {"id":"x","key":"K2","approved":false,"revoked":true,"online":false,"lastSeen":"bad","services":[]},
+     {"id":"y","key":"K3","approved":false,"revoked":false,"denied":true,"online":true,"services":[]}]
     """#
     let devices = try JSONDecoder().decode([Device].self, from: Data(json.utf8))
-    #expect(devices.count == 2)
+    #expect(devices.count == 3)
+    #expect(devices[2].denied && !devices[0].denied && !devices[1].denied)
     let mac = devices[0]
     #expect(mac.name == "Mac Studio" && mac.approved && mac.online && mac.network == .offline)
     #expect(mac.lastSeen != nil)
@@ -29,6 +31,7 @@ struct DevicesAPITests {
     #expect(devices[1].name == "x" && devices[1].revoked && devices[1].lastSeen == nil)
     let again = try JSONDecoder().decode(Device.self, from: JSONEncoder().encode(mac))
     #expect(again == mac)
+    #expect(try JSONDecoder().decode(Device.self, from: JSONEncoder().encode(devices[2])) == devices[2])
   }
 
   @Test("grants encode their subject and object as one-key objects")
@@ -60,6 +63,9 @@ struct DevicesAPITests {
     #expect(current.verifiedCode(hubKey: "another") == nil, "the hub's code has to hold for the key this side pinned")
     let request = try JSONDecoder().decode(DeviceRequest.self, from: Data(#"{"id":"i","status":"waiting"}"#.utf8))
     #expect(request.status == .waiting && request.safetyCode(hubKey: "h", deviceKey: "k") == nil)
+    // Hub app H-033: a request an owner denied says so, with no code
+    let denied = try JSONDecoder().decode(DeviceRequest.self, from: Data(#"{"id":"i","status":"denied"}"#.utf8))
+    #expect(denied.status == .denied && denied.safetyCode(hubKey: "h", deviceKey: "k") == nil)
     let mode = try JSONDecoder().decode(SecurityMode.self, from: Data(#"{"mode":"default-deny","requireV1":false}"#.utf8))
     #expect(mode.mode == .defaultDeny)
     let info = try JSONDecoder().decode(HubInfo.self, from: Data(#"{"key":"K","protocol":1,"pro":true,"mode":"default-allow"}"#.utf8))

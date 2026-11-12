@@ -35,6 +35,8 @@ public struct Device: Codable, Hashable, Identifiable, Sendable {
   public var parent: String?
   public var approved: Bool
   public var revoked: Bool
+  /// An owner denied its request (`hub/device/deny`): it's no longer pending, and asking again doesn't make it so
+  public var denied: Bool
   public var online: Bool
   public var network: NetworkState?
   public var overlay: Overlay?
@@ -49,7 +51,7 @@ public struct Device: Codable, Hashable, Identifiable, Sendable {
   public var linked: Bool?
 
   enum CodingKeys: String, CodingKey {
-    case id, key, name, platform, os, arch, parent, approved, revoked, online, network, overlay, lastSeen, capabilities, services, codeValue, attachedTo, linked
+    case id, key, name, platform, os, arch, parent, approved, revoked, denied, online, network, overlay, lastSeen, capabilities, services, codeValue, attachedTo, linked
   }
   public init(from decoder: any Decoder) throws {
     let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -62,6 +64,7 @@ public struct Device: Codable, Hashable, Identifiable, Sendable {
     parent = try container.decodeIfPresent(String.self, forKey: .parent)
     approved = try container.decodeIfPresent(Bool.self, forKey: .approved) ?? false
     revoked = try container.decodeIfPresent(Bool.self, forKey: .revoked) ?? false
+    denied = (try? container.decodeIfPresent(Bool.self, forKey: .denied)) ?? false
     online = try container.decodeIfPresent(Bool.self, forKey: .online) ?? false
     network = try? container.decodeIfPresent(NetworkState.self, forKey: .network)
     overlay = try? container.decodeIfPresent(Overlay.self, forKey: .overlay)
@@ -83,6 +86,7 @@ public struct Device: Codable, Hashable, Identifiable, Sendable {
     try container.encodeIfPresent(parent, forKey: .parent)
     try container.encode(approved, forKey: .approved)
     try container.encode(revoked, forKey: .revoked)
+    if denied { try container.encode(true, forKey: .denied) }
     try container.encode(online, forKey: .online)
     try container.encodeIfPresent(network, forKey: .network)
     try container.encodeIfPresent(overlay, forKey: .overlay)
@@ -146,6 +150,8 @@ public struct AttachRequest: Codable, Hashable, Identifiable, Sendable {
 public struct DeviceRequest: Codable, Hashable, Sendable {
   public enum Status: String, Codable, Hashable, Sendable {
     case waiting, pending, approved
+    /// An owner turned the request down. It stays so until an owner approves the device or removes it.
+    case denied
   }
   public var id: String
   public var status: Status
@@ -458,6 +464,11 @@ public struct HubDevicesAPI {
   @discardableResult
   public func rename(_ id: String, to name: String) async throws -> Device {
     try await client.send("hub/device/rename", Rename(id: id, name: name))
+  }
+  /// Turns a pending request down: the device stays off the pending list and hears `denied` until an owner approves
+  /// or removes it. Older hubs have no `hub/device/deny`; remove the device there.
+  public func deny(_ id: String) async throws {
+    try await client.send("hub/device/deny", ID(id: id))
   }
   /// Detaches the device: it can enrol again, as pending
   public func remove(_ id: String) async throws {
